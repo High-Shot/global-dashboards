@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIC Industries — CC_US Weekly Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0d0f14;--bg2:#13161e;--bg3:#1a1e28;--bg4:#222736;--border:#2a2f3d;--border2:#363d52;--white:#f0f2f7;--muted:#8891a8;--dim:#4a5268;--electric:#4fc3f7;--green:#4ade80;--amber:#fbbf24;--red:#f87171;--red2:#ef4444;--orange:#fb923c;--purple:#a78bfa;--teal:#2dd4bf;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--white);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.4;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:999;}
+.mono{font-family:'DM Mono',monospace;}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:stretch;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.header-left{display:flex;align-items:center;gap:20px;padding:14px 0;}
+.brand{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--white);}
+.brand span{color:var(--electric);}
+.divider-v{width:1px;height:28px;background:var(--border);}
+.header-meta{display:flex;flex-direction:column;gap:1px;}
+.header-meta .lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;}
+.header-meta .val{font-family:'DM Mono',monospace;font-size:12px;color:var(--white);}
+.header-right{display:flex;align-items:center;gap:6px;padding:14px 0;}
+.badge{padding:3px 8px;border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;}
+.badge-crit{background:rgba(248,113,113,0.15);color:var(--red);border:1px solid rgba(248,113,113,0.3);}
+.badge-warn{background:rgba(251,191,36,0.12);color:var(--amber);border:1px solid rgba(251,191,36,0.25);}
+.badge-ok{background:rgba(74,222,128,0.1);color:var(--green);border:1px solid rgba(74,222,128,0.2);}
+.badge-info{background:rgba(79,195,247,0.1);color:var(--electric);border:1px solid rgba(79,195,247,0.2);}
+.badge-dim{background:rgba(74,82,104,0.3);color:var(--dim);border:1px solid var(--border);}
+.week-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:stretch;gap:0;overflow-x:auto;}
+.week-tab{padding:10px 20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);border-bottom:2px solid transparent;cursor:pointer;transition:all 0.15s;user-select:none;white-space:nowrap;}
+.week-tab:hover{color:var(--muted);border-bottom-color:var(--border2);}
+.week-tab.active{color:var(--electric);border-bottom-color:var(--electric);}
+.week-tab .dot{width:5px;height:5px;border-radius:50%;display:inline-block;margin-left:2px;}
+.week-tab .dot-crit{background:var(--red);}
+.week-tab .dot-warn{background:var(--amber);}
+.week-tab .dot-ok{background:var(--green);}
+.week-tab-add{padding:10px 16px;font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);cursor:default;display:flex;align-items:center;margin-left:auto;}
+.trend-bar{background:var(--bg3);border-bottom:1px solid var(--border);padding:9px 32px;display:flex;align-items:center;gap:24px;overflow-x:auto;}
+.trend-item{display:flex;align-items:center;gap:7px;white-space:nowrap;}
+.trend-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;}
+.trend-v{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;}
+.trend-delta{font-size:9px;font-family:'DM Mono',monospace;padding:1px 5px;border-radius:2px;}
+.up-bad{color:var(--red);background:rgba(248,113,113,0.12);}
+.up-good{color:var(--green);background:rgba(74,222,128,0.1);}
+.down-bad{color:var(--red);background:rgba(248,113,113,0.12);}
+.down-good{color:var(--green);background:rgba(74,222,128,0.1);}
+.neutral{color:var(--dim);background:rgba(74,82,104,0.2);}
+.trend-div{width:1px;height:18px;background:var(--border);}
+.page{padding:22px 32px;max-width:1600px;margin:0 auto;}
+.sec{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin-bottom:9px;font-family:'DM Mono',monospace;}
+.kpi-row{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-bottom:22px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.kpi{background:var(--bg2);padding:13px 15px;position:relative;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi.ok::before{background:var(--green);}
+.kpi.warn::before{background:var(--amber);}
+.kpi.crit::before{background:var(--red);}
+.kpi.neutral::before{background:var(--electric);}
+.kpi-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;font-family:'DM Mono',monospace;}
+.kpi-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--white);line-height:1;margin-bottom:3px;}
+.kpi-val.crit{color:var(--red);}
+.kpi-val.warn{color:var(--amber);}
+.kpi-val.ok{color:var(--green);}
+.kpi-sub{font-size:9px;color:var(--dim);font-family:'DM Mono',monospace;}
+.kpi-sub.flag{color:var(--amber);}
+.kpi-sub.crit{color:var(--red);}
+.kpi-sub.ok{color:var(--green);}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:22px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.panel-header{padding:9px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.panel-title{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'DM Mono',monospace;font-weight:500;}
+.panel-body{padding:14px;}
+.chart-wrap canvas{max-height:200px;}
+.chart-wrap.tall canvas{max-height:230px;}
+.trend-charts{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:22px;}
+.tcc{background:var(--bg2);padding:12px 14px;}
+.tcc .tc-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;margin-bottom:8px;}
+.product-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:22px;}
+.pc{background:var(--bg2);padding:11px 13px;position:relative;transition:background 0.15s;}
+.pc:hover{background:var(--bg3);}
+.pc.flagged{background:rgba(248,113,113,0.03);}
+.pc.warned{background:rgba(251,191,36,0.03);}
+.pc-bar{position:absolute;top:0;left:0;right:0;height:2px;}
+.pc-bar.crit{background:var(--red);}
+.pc-bar.warn{background:var(--amber);}
+.pc-bar.ok{background:var(--green);}
+.pc-name{font-weight:600;font-size:11px;color:var(--white);margin-bottom:7px;margin-top:4px;}
+.pc-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;}
+.pcl{font-size:9px;color:var(--dim);font-family:'DM Mono',monospace;}
+.pcv{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);font-weight:500;}
+.pcv.hi{color:var(--white);}
+.pcv.crit{color:var(--red);}
+.pcv.warn{color:var(--amber);}
+.pcv.ok{color:var(--green);}
+.eff-wrap{margin-top:7px;}
+.eff-lbl{display:flex;justify-content:space-between;margin-bottom:3px;}
+.eff-track{height:3px;background:var(--bg4);border-radius:2px;position:relative;overflow:hidden;}
+.eff-fill{height:100%;border-radius:2px;width:0%;transition:width 0.7s ease;}
+.eff-thresh{position:absolute;top:-3px;width:1px;height:9px;background:rgba(255,255,255,0.2);}
+.pc-bsr{margin-top:6px;padding-top:6px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.bsr-v{font-family:'DM Mono',monospace;font-size:9px;color:var(--electric);font-weight:500;}
+.bsr-l{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;}
+.flag-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px;}
+.fc{border-radius:6px;padding:11px 13px;border:1px solid;}
+.fc.crit{background:rgba(248,113,113,0.06);border-color:rgba(248,113,113,0.25);}
+.fc.warn{background:rgba(251,191,36,0.06);border-color:rgba(251,191,36,0.2);}
+.fc.info{background:rgba(79,195,247,0.05);border-color:rgba(79,195,247,0.2);}
+.fc.ok{background:rgba(74,222,128,0.05);border-color:rgba(74,222,128,0.2);}
+.ft{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;margin-bottom:4px;}
+.fc.crit .ft{color:var(--red);}
+.fc.warn .ft{color:var(--amber);}
+.fc.info .ft{color:var(--electric);}
+.fc.ok .ft{color:var(--green);}
+.fp{font-size:11px;font-weight:600;color:var(--white);margin-bottom:3px;}
+.fd{font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:6px;}
+.fa{font-size:9px;color:var(--dim);font-family:'DM Mono',monospace;border-top:1px solid rgba(255,255,255,0.06);padding-top:5px;}
+.fc.crit .fa{color:rgba(248,113,113,0.7);}
+.fc.warn .fa{color:rgba(251,191,36,0.6);}
+.fc.info .fa{color:rgba(79,195,247,0.6);}
+.bot-row{display:grid;grid-template-columns:1fr 1.4fr;gap:14px;margin-bottom:22px;}
+.dt{width:100%;border-collapse:collapse;}
+.dt th{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);font-family:'DM Mono',monospace;font-weight:500;padding:5px 10px;text-align:right;border-bottom:1px solid var(--border);}
+.dt th:first-child{text-align:left;}
+.dt td{padding:7px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:right;border-bottom:1px solid var(--border);}
+.dt td:first-child{text-align:left;color:var(--white);font-size:10px;font-weight:500;}
+.dt tr:last-child td{border-bottom:none;}
+.dt tr:hover td{background:rgba(255,255,255,0.02);}
+.td-hi{color:var(--white)!important;}
+.td-z{color:var(--dim)!important;}
+.td-w{color:var(--amber)!important;}
+.td-c{color:var(--red)!important;}
+.td-ok{color:var(--green)!important;}
+footer{border-top:1px solid var(--border);padding:12px 32px;display:flex;justify-content:space-between;align-items:center;color:var(--dim);font-size:9px;font-family:'DM Mono',monospace;}
+.footer-gap{color:var(--amber);}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.ani{animation:fadeIn 0.3s ease both;}
+</style>
+</head>
+<body>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA LAYER
+// To add a new week: copy the object template below, fill values,
+// uncomment, and append to the WEEKS array. That's it.
+// ═══════════════════════════════════════════════════════════════
+
+const WEEKS = [
+
+  // ── WE 3/14/2026 ────────────────────────────────────────────
+  {
+    id:"WE_0314", label:"WE 3/14", fullLabel:"Week Ending March 14, 2026",
+    note:"Baseline", critCount:3, warnCount:4, okCount:3,
+    acct:{revenue:448621,units:25058,sessions:118614,cvr:21.1,adSpend:50622,adSales:188954,organicSales:259667,acos:26.8,tacos:11.3,roas:3.7,ntbOrders:818,ntbPct:3.3},
+    products:[
+      {name:"Headlight Kit",   status:"warn",revenue:209733,units:11406,sessions:42355,cvr:26.9,adSpend:22939,adSales:84711, acos:27.1,tacos:10.9,tacosTarget:5, ntbOrders:353,ntbSales:6714, ntbPct:3.0, bsr:"#10 Auto · #1 Headlight", effMetric:"TACoS",effVal:10.9,effTarget:5, effMax:50},
+      {name:"Trim Coat",       status:"ok",  revenue:68917, units:3779, sessions:17881,cvr:21.1,adSpend:5603, adSales:25132, acos:22.3,tacos:8.1, tacosTarget:10,ntbOrders:91, ntbSales:1800, ntbPct:2.6, bsr:"#116 Auto · #1 Plastic",  effMetric:"TACoS",effVal:8.1, effTarget:10,effMax:50},
+      {name:"Paint Sealant",   status:"warn",revenue:67513, units:3217, sessions:24479,cvr:13.1,adSpend:7898, adSales:26750, acos:29.5,tacos:11.7,tacosTarget:10,ntbOrders:184,ntbSales:4051, ntbPct:6.1, bsr:"#134 Auto · #1 Waxes",    effMetric:"ACoS", effVal:29.5,effTarget:30,effMax:60},
+      {name:"Tire Coat",       status:"ok",  revenue:55206, units:3712, sessions:12775,cvr:29.1,adSpend:5450, adSales:21898, acos:24.9,tacos:9.9, tacosTarget:10,ntbOrders:168,ntbSales:2729, ntbPct:4.5, bsr:"#108 Auto · #1 Wheel",    effMetric:"TACoS",effVal:9.9, effTarget:10,effMax:50},
+      {name:"Plastic Restorer",status:"warn",revenue:14067, units:951,  sessions:7164, cvr:13.3,adSpend:3040, adSales:11740, acos:25.9,tacos:21.6,tacosTarget:10,ntbOrders:0,  ntbSales:0,    ntbPct:0,   bsr:"#642 Auto · #6 Plastic",  effMetric:"TACoS",effVal:21.6,effTarget:10,effMax:50},
+      {name:"Pro Ceramic",     status:"crit",revenue:11030, units:110,  sessions:2378, cvr:4.6, adSpend:2152, adSales:5939,  acos:36.2,tacos:19.5,tacosTarget:10,ntbOrders:11, ntbSales:262,  ntbPct:10.5,bsr:"— not tracked",bsrMissing:true,effMetric:"ACoS",effVal:36.2,effTarget:30,effMax:60},
+      {name:"Microfiber Towels",status:"ok", revenue:7836,  units:794,  sessions:2455, cvr:32.3,adSpend:667,  adSales:2445,  acos:27.3,tacos:8.5, tacosTarget:10,ntbOrders:0,  ntbSales:0,    ntbPct:0,   bsr:"#1,403 Auto · #23 MF",   effMetric:"TACoS",effVal:8.5, effTarget:10,effMax:50},
+      {name:"Interior Detailer",status:"warn",revenue:5001, units:413,  sessions:3035, cvr:13.6,adSpend:725,  adSales:3113,  acos:23.3,tacos:14.5,tacosTarget:10,ntbOrders:0,  ntbSales:0,    ntbPct:0,   bsr:"#2,973 Auto · #9 Vinyl",  effMetric:"TACoS",effVal:14.5,effTarget:10,effMax:50},
+      {name:"Glass Coat",      status:"warn",revenue:6215,  units:499,  sessions:4461, cvr:11.2,adSpend:1028, adSales:4854,  acos:21.2,tacos:16.5,tacosTarget:10,ntbOrders:10, ntbSales:111,  ntbPct:1.2, bsr:"#2,053 Auto · #9 Glass",  effMetric:"TACoS",effVal:16.5,effTarget:10,effMax:50},
+      {name:"Vehicle Shampoo", status:"crit",revenue:3104,  units:177,  sessions:1631, cvr:10.9,adSpend:1120, adSales:2372,  acos:47.2,tacos:36.1,tacosTarget:10,ntbOrders:0,  ntbSales:0,    ntbPct:0,   bsr:"#7,289 Auto · #94 Clean", effMetric:"ACoS", effVal:47.2,effTarget:30,effMax:60},
+    ],
+    flags:[
+      {type:"crit",title:"Critical — Immediate",   product:"Vehicle Shampoo",          detail:"ACoS 47.2%, TACoS 36.1%. Ad sales ($2,372) exceed revenue ($3,104). Negative organic sales. Consumable — compounds over time.",action:"→ Cut bids on SP_AT_SUB_CLOSE + SP_BR_car_soap. Target ACoS <30%."},
+      {type:"crit",title:"Critical — Immediate",   product:"No Portfolio Campaigns",   detail:"43 campaigns unassigned. $5,165/wk spend invisible. NTB from these campaigns unattributable.",                                action:"→ Assign all campaigns to portfolios in Ad Console. <30 min."},
+      {type:"warn",title:"Warning — This Week",    product:"Pro Ceramic Coating",       detail:"ACoS 36.2%, TACoS 19.5% — both over threshold. BSR missing from Helium10.",                                                  action:"→ Add B0CN8HJSYM to Helium10. Pause top EX campaigns."},
+      {type:"warn",title:"Warning — This Week",    product:"Headlight Kit TACoS",       detail:"TACoS 10.9% vs 5% target — 2x over. HL = 47% of account revenue. Each 1% reduction = ~$2,100/wk.",                          action:"→ Bid optimization on top 5 HL campaigns. Do not cut spend."},
+      {type:"warn",title:"Warning — Monitor",      product:"Plastic Restorer + NTB Gap",detail:"TACoS 21.6%. Zero NTB on Plastic Restorer, MF Towels, Shampoo — confirmed: no SBV campaigns running.",                       action:"→ Launch SBV for MF Towels first (TACoS 8.5% — most headroom)."},
+      {type:"info",title:"Data Gap — Action Needed",product:"$21,443 Unattributed Rev",detail:"31 ASINs not in Data_Map. Largest: PS bulk $9.2k, TC pro pack $4.8k, Wheel Sealant $2.1k.",                                   action:"→ Update Data_Map before WE 3/21."},
+    ],
+  },
+
+  // ── TEMPLATE: WE 3/21/2026 — uncomment and fill ─────────────
+  // {
+  //   id:"WE_0321", label:"WE 3/21", fullLabel:"Week Ending March 21, 2026",
+  //   note:"", critCount:0, warnCount:0, okCount:0,
+  //   acct:{revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,organicSales:0,acos:0,tacos:0,roas:0,ntbOrders:0,ntbPct:0},
+  //   products:[
+  //     {name:"Headlight Kit",   status:"ok",revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,acos:0,tacos:0,tacosTarget:5, ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"",effMetric:"TACoS",effVal:0,effTarget:5,effMax:50},
+  //     {name:"Trim Coat",       status:"ok",revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,acos:0,tacos:0,tacosTarget:10,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"",effMetric:"TACoS",effVal:0,effTarget:10,effMax:50},
+  //     {name:"Paint Sealant",   status:"ok",revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,acos:0,tacos:0,tacosTarget:10,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"",effMetric:"ACoS", effVal:0,effTarget:30,effMax:60},
+  //     {name:"Tire Coat",       status:"ok",revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,acos:0,tacos:0,tacosTarget:10,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"",effMetric:"TACoS",effVal:0,effTarget:10,effMax:50},
+  //     {name:"Plastic Restorer",status:"ok",revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,acos:0,tacos:0,tacosTarget:10,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"",effMetric:"TACoS",effVal:0,effTarget:10,effMax:50},
+  //     {name:"Pro Ceramic",     status:"ok",revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,acos:0,tacos:0,tacosTarget:10,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"",effMetric:"ACoS", effVal:0,effTarget:30,effMax:60},
+  //     {name:"Microfiber Towels",status:"ok",revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,acos:0,tacos:0,tacosTarget:10,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"",effMetric:"TACoS",effVal:0,effTarget:10,effMax:50},
+  //     {name:"Interior Detailer",status:"ok",revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,acos:0,tacos:0,tacosTarget:10,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"",effMetric:"TACoS",effVal:0,effTarget:10,effMax:50},
+  //     {name:"Glass Coat",      status:"ok",revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,acos:0,tacos:0,tacosTarget:10,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"",effMetric:"TACoS",effVal:0,effTarget:10,effMax:50},
+  //     {name:"Vehicle Shampoo", status:"ok",revenue:0,units:0,sessions:0,cvr:0,adSpend:0,adSales:0,acos:0,tacos:0,tacosTarget:10,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"",effMetric:"ACoS", effVal:0,effTarget:30,effMax:60},
+  //   ],
+  //   flags:[],
+  // },
+
+];
+
+// ── constants ───────────────────────────────────────────────────
+const PN = ["HL Kit","Trim","Paint","Tire","Plastic","Pro Cer","MF Towels","Interior","Glass","Shampoo"];
+const PC = ['#4fc3f7','#4ade80','#fbbf24','#2dd4bf','#fb923c','#f87171','#a78bfa','#f59e0b','#34d399','#ef4444'];
+let wIdx = 0, CH = {};
+
+// ── format helpers ──────────────────────────────────────────────
+const fU  = n => n >= 1000 ? '$'+(n/1000).toFixed(1)+'K' : '$'+n.toFixed(0);
+const fUF = n => '$'+n.toLocaleString();
+const fP  = n => n.toFixed(1)+'%';
+const fX  = n => n.toFixed(1)+'x';
+const fN  = n => n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n);
+
+function delta(val, prev, higherIsBad) {
+  if (!prev) return '<span class="trend-delta neutral">baseline</span>';
+  const d = val - prev, p = ((d/prev)*100).toFixed(1), a = Math.abs(p);
+  const cls = higherIsBad ? (d>0?'up-bad':'down-good') : (d>0?'up-good':'down-bad');
+  return `<span class="trend-delta ${cls}">${d>0?'▲':'▼'} ${a}%</span>`;
+}
+
+// ── render functions ─────────────────────────────────────────────
+function renderTrendBar() {
+  const w = WEEKS[wIdx], p = wIdx>0 ? WEEKS[wIdx-1] : null, a = w.acct, pa = p?.acct;
+  document.getElementById('trendBar').innerHTML = [
+    ['Revenue', fU(a.revenue),  '#f0f2f7', delta(a.revenue,  pa?.revenue,  false)],
+    ['Ad Spend',fU(a.adSpend),  '#8891a8', delta(a.adSpend,  pa?.adSpend,  true)],
+    ['TACoS',   fP(a.tacos),    a.tacos>15?'#f87171':a.tacos>10?'#fbbf24':'#4ade80', delta(a.tacos, pa?.tacos, true)],
+    ['ACoS',    fP(a.acos),     a.acos>30?'#f87171':'#8891a8', delta(a.acos, pa?.acos, true)],
+    ['ROAS',    fX(a.roas),     '#8891a8', delta(a.roas,     pa?.roas,     false)],
+    ['NTB Ord', a.ntbOrders+'','#8891a8', delta(a.ntbOrders, pa?.ntbOrders,false)],
+    ['Units',   fN(a.units),    '#8891a8', delta(a.units,    pa?.units,    false)],
+    ['Sessions',fN(a.sessions), '#8891a8', delta(a.sessions, pa?.sessions, false)],
+  ].map((r,i) =>
+    (i>0?'<div class="trend-div"></div>':'')+
+    `<div class="trend-item"><span class="trend-lbl">${r[0]}</span><span class="trend-v" style="color:${r[2]}">${r[1]}</span>${r[3]}</div>`
+  ).join('');
+}
+
+function renderKPIs() {
+  const a = WEEKS[wIdx].acct;
+  const ts = a.tacos>15?'crit':a.tacos>10?'warn':'ok';
+  const as = a.acos>30?'crit':'ok';
+  document.getElementById('kpiRow').innerHTML = [
+    ['neutral','Total Revenue',  fU(a.revenue),  '10 products',''],
+    ['neutral','Units Sold',     fN(a.units),     'all products',''],
+    ['neutral','Sessions',       fN(a.sessions),  'finalized',''],
+    ['neutral','Blended CVR',    fP(a.cvr),       'units / sessions',''],
+    [ts,       'TACoS',          fP(a.tacos),     'target 10%', ts!=='ok'?'flag':'ok'],
+    [as,       'ACoS',           fP(a.acos),      'limit 30%',  as!=='ok'?'crit':'ok'],
+    ['neutral','ROAS',           fX(a.roas),      'ad / spend',''],
+    ['neutral','NTB Orders',     a.ntbOrders+'',  fP(a.ntbPct)+' NTB rate',''],
+  ].map(([s,l,v,sub,subCls])=>`<div class="kpi ${s}"><div class="kpi-lbl">${l}</div><div class="kpi-val ${s==='ok'?'ok':s==='warn'?'warn':s==='crit'?'crit':''}">${v}</div><div class="kpi-sub ${subCls}">${sub}</div></div>`).join('');
+}
+
+function renderProducts() {
+  document.getElementById('productGrid').innerHTML = WEEKS[wIdx].products.map(p => {
+    const ep = Math.min(100,(p.effVal/p.effMax)*100);
+    const ec = p.status==='crit'?'var(--red)':p.status==='warn'?'var(--amber)':'var(--green)';
+    const tp = (p.effTarget/p.effMax)*100;
+    const vs = p.status==='crit'?'crit':p.status==='warn'?'warn':'ok';
+    return `<div class="pc ${p.status==='crit'?'flagged':p.status==='warn'?'warned':''}">
+      <div class="pc-bar ${p.status}"></div>
+      <div class="pc-name">${p.name}</div>
+      <div class="pc-row"><span class="pcl">Revenue</span><span class="pcv hi">${fUF(p.revenue)}</span></div>
+      <div class="pc-row"><span class="pcl">Sessions</span><span class="pcv">${fN(p.sessions)}</span></div>
+      <div class="pc-row"><span class="pcl">CVR</span><span class="pcv">${fP(p.cvr)}</span></div>
+      <div class="pc-row"><span class="pcl">Ad Spend</span><span class="pcv">${fUF(p.adSpend)}</span></div>
+      <div class="eff-wrap">
+        <div class="eff-lbl"><span class="pcl">${p.effMetric}</span><span class="pcv ${vs}">${fP(p.effVal)} <span style="color:var(--dim);font-size:8px">/ ${p.effTarget}%</span></span></div>
+        <div class="eff-track">
+          <div class="eff-fill" data-w="${ep}" style="background:${ec}"></div>
+          <div class="eff-thresh" style="left:${tp}%"></div>
+        </div>
+      </div>
+      <div class="pc-bsr"><span class="bsr-l">BSR</span><span class="bsr-v" ${p.bsrMissing?'style="color:var(--amber)"':''}>${p.bsr}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderFlags() {
+  document.getElementById('flagGrid').innerHTML = WEEKS[wIdx].flags.map(f=>
+    `<div class="fc ${f.type}"><div class="ft">${f.title}</div><div class="fp">${f.product}</div><div class="fd">${f.detail}</div><div class="fa">${f.action}</div></div>`
+  ).join('');
+}
+
+function renderNTB() {
+  document.getElementById('ntbBody').innerHTML = WEEKS[wIdx].products.map(p=>
+    `<tr><td>${p.name}</td><td class="${p.ntbOrders?'td-hi':'td-z'}">${p.ntbOrders||'—'}</td><td class="${p.ntbOrders?'':'td-z'}">${p.ntbOrders?'$'+p.ntbSales.toLocaleString():'—'}</td><td class="${p.ntbOrders?(p.ntbPct>5?'td-ok':''):'td-z'}">${p.ntbOrders?fP(p.ntbPct):'—'}</td></tr>`
+  ).join('');
+}
+
+// ── chart builders ──────────────────────────────────────────────
+function destroyAll(){ Object.values(CH).forEach(c=>{try{c.destroy();}catch(e){}}); CH={}; }
+
+function mkChart(id, cfg) { if(document.getElementById(id)) CH[id] = new Chart(document.getElementById(id), cfg); }
+
+function buildCharts() {
+  const w = WEEKS[wIdx];
+  const revs = w.products.map(p=>p.revenue);
+  const ads  = w.products.map(p=>p.adSales);
+  const org  = w.products.map(p=>Math.max(0,p.revenue-p.adSales));
+  const tacs = w.products.map(p=>p.tacos);
+  const acs  = w.products.map(p=>p.acos);
+  const def  = { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{grid:{color:'#1a1e28'},ticks:{font:{size:9}}},y:{grid:{color:'#1a1e28'}}} };
+
+  mkChart('cRevenue',{type:'bar',data:{labels:PN,datasets:[{data:revs,backgroundColor:PC.map(c=>c+'30'),borderColor:PC,borderWidth:1.5,borderRadius:2}]},options:{...def,scales:{x:def.scales.x,y:{...def.scales.y,ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k',font:{size:9}}}}}});
+
+  mkChart('cOrganic',{type:'bar',data:{labels:PN,datasets:[{label:'Organic',data:org,backgroundColor:'rgba(74,222,128,0.2)',borderColor:'#4ade80',borderWidth:1},{label:'Ad-Driven',data:ads,backgroundColor:'rgba(79,195,247,0.17)',borderColor:'#4fc3f7',borderWidth:1}]},options:{...def,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:9}}}},scales:{x:{stacked:true,grid:{color:'#1a1e28'},ticks:{font:{size:9}}},y:{stacked:true,grid:{color:'#1a1e28'},ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k',font:{size:9}}}}}});
+
+  mkChart('cTacos',{type:'bar',data:{labels:PN,datasets:[{label:'TACoS',data:tacs,backgroundColor:tacs.map(v=>v>15?'rgba(248,113,113,0.3)':v>10?'rgba(251,191,36,0.3)':'rgba(74,222,128,0.25)'),borderColor:tacs.map(v=>v>15?'#f87171':v>10?'#fbbf24':'#4ade80'),borderWidth:1.5,borderRadius:2},{label:'10% Target',data:new Array(10).fill(10),type:'line',borderColor:'rgba(255,255,255,0.12)',borderDash:[4,4],borderWidth:1,pointRadius:0,fill:false}]},options:{...def,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:9}}}},scales:{x:def.scales.x,y:{...def.scales.y,ticks:{callback:v=>v+'%',font:{size:9}}}}}});
+
+  mkChart('cScatter',{type:'scatter',data:{datasets:w.products.map((p,i)=>({label:p.name,data:[{x:p.revenue/1000,y:p.acos}],backgroundColor:p.acos>30?'rgba(248,113,113,0.5)':'rgba(79,195,247,0.4)',borderColor:p.acos>30?'#f87171':'#4fc3f7',borderWidth:1.5,pointRadius:Math.max(5,Math.sqrt(p.revenue/500)),pointHoverRadius:Math.max(7,Math.sqrt(p.revenue/500)+2)}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: $${ctx.parsed.x.toFixed(0)}k · ${ctx.parsed.y.toFixed(1)}% ACoS`}}},scales:{x:{grid:{color:'#1a1e28'},title:{display:true,text:'Revenue ($K)',color:'#4a5268',font:{size:9}},ticks:{callback:v=>'$'+v+'k',font:{size:9}}},y:{grid:{color:'#1a1e28'},title:{display:true,text:'ACoS %',color:'#4a5268',font:{size:9}},ticks:{callback:v=>v+'%',font:{size:9}}}}}});
+
+  buildTrendCharts();
+}
+
+function buildTrendCharts() {
+  const ws = WEEKS.slice(0, wIdx+1), lb = ws.map(w=>w.label);
+  const tc = (id, data, color, fmt) => {
+    if(CH[id]) { try{CH[id].destroy();}catch(e){} }
+    if(!document.getElementById(id)) return;
+    CH[id] = new Chart(document.getElementById(id),{type:'line',data:{labels:lb,datasets:[{data,borderColor:color,backgroundColor:color+'18',borderWidth:2,pointRadius:3,pointBackgroundColor:color,fill:true,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1a1e28'},ticks:{font:{size:9}}},y:{grid:{color:'#1a1e28'},ticks:{callback:fmt,font:{size:9}}}}}});
+  };
+  tc('tRev',  ws.map(w=>w.acct.revenue/1000),   '#4fc3f7', v=>'$'+v.toFixed(0)+'k');
+  tc('tTacos',ws.map(w=>w.acct.tacos),           '#fbbf24', v=>v.toFixed(1)+'%');
+  tc('tSpend',ws.map(w=>w.acct.adSpend/1000),    '#a78bfa', v=>'$'+v.toFixed(0)+'k');
+  tc('tNTB',  ws.map(w=>w.acct.ntbOrders),       '#4ade80', v=>v.toFixed(0));
+}
+
+// ── render all ──────────────────────────────────────────────────
+function render(idx) {
+  wIdx = idx;
+  const w = WEEKS[idx];
+  document.getElementById('hWeek').textContent = w.fullLabel;
+  document.getElementById('hNote').textContent = w.note || 'CC_US';
+  document.getElementById('bCrit').textContent = w.critCount+' Critical';
+  document.getElementById('bWarn').textContent = w.warnCount+' Warnings';
+  document.getElementById('bOk').textContent   = w.okCount+' Healthy';
+  document.querySelectorAll('.week-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  document.getElementById('footWeek').textContent = w.fullLabel;
+  renderTrendBar(); renderKPIs(); renderProducts(); renderFlags(); renderNTB();
+  destroyAll();
+  requestAnimationFrame(() => {
+    buildCharts();
+    setTimeout(() => {
+      document.querySelectorAll('.eff-fill').forEach((b,i) => {
+        const tw = b.getAttribute('data-w');
+        setTimeout(() => { b.style.width = tw+'%'; }, i*35);
+      });
+    }, 60);
+  });
+  ['kpiRow','productGrid','flagGrid'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('ani');
+    requestAnimationFrame(() => el.classList.add('ani'));
+  });
+}
+
+function buildTabs() {
+  const bar = document.getElementById('weekTabBar');
+  const lastLabel = WEEKS[WEEKS.length-1].label;
+  const p = lastLabel.replace('WE ','').split('/');
+  const nxt = new Date(2026, parseInt(p[0])-1, parseInt(p[1])+7);
+  bar.innerHTML = WEEKS.map((w,i)=>
+    `<div class="week-tab" onclick="render(${i})">${w.label}${w.note?`<span style="font-size:8px;color:var(--dim);margin-left:4px">${w.note}</span>`:''}
+    ${w.critCount>0?'<span class="dot dot-crit"></span>':''}${w.warnCount>0?'<span class="dot dot-warn"></span>':''}${w.okCount>0?'<span class="dot dot-ok"></span>':''}</div>`
+  ).join('') + `<div class="week-tab-add">+ Add WE ${nxt.getMonth()+1}/${nxt.getDate()} via data block</div>`;
+}
+
+window.addEventListener('load', () => { buildTabs(); render(0); });
+</script>
+
+<!-- ─────────────── HTML ─────────────── -->
+
+<header class="header">
+  <div class="header-left">
+    <div class="brand">NIC <span>INDUSTRIES</span></div>
+    <div class="divider-v"></div>
+    <div class="header-meta"><span class="lbl">Brand / Market</span><span class="val">Cerakote Ceramics — US</span></div>
+    <div class="divider-v"></div>
+    <div class="header-meta"><span class="lbl">Week Ending</span><span class="val" id="hWeek">—</span></div>
+    <div class="divider-v"></div>
+    <div class="header-meta"><span class="lbl">Status</span><span class="val" id="hNote">—</span></div>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-crit" id="bCrit">—</span>
+    <span class="badge badge-warn" id="bWarn">—</span>
+    <span class="badge badge-ok"   id="bOk">—</span>
+    <span class="badge badge-info">CC_US</span>
+  </div>
+</header>
+
+<nav class="week-bar" id="weekTabBar"></nav>
+<div class="trend-bar" id="trendBar"></div>
+
+<div class="page">
+
+  <div class="sec">Account Overview</div>
+  <div class="kpi-row ani" id="kpiRow"></div>
+
+  <div class="sec">Revenue &amp; Advertising Mix</div>
+  <div class="three-col">
+    <div class="panel"><div class="panel-header"><span class="panel-title">Revenue by Product</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cRevenue"></canvas></div></div></div>
+    <div class="panel"><div class="panel-header"><span class="panel-title">Organic vs Ad-Driven</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cOrganic"></canvas></div></div></div>
+    <div class="panel"><div class="panel-header"><span class="panel-title">TACoS by Product</span><span class="badge badge-dim" style="font-size:8px">10% target line</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cTacos"></canvas></div></div></div>
+  </div>
+
+  <div class="sec">Trend — All Weeks</div>
+  <div class="trend-charts">
+    <div class="tcc"><div class="tc-lbl">Revenue ($K)</div><div style="height:90px"><canvas id="tRev"></canvas></div></div>
+    <div class="tcc"><div class="tc-lbl">TACoS %</div><div style="height:90px"><canvas id="tTacos"></canvas></div></div>
+    <div class="tcc"><div class="tc-lbl">Ad Spend ($K)</div><div style="height:90px"><canvas id="tSpend"></canvas></div></div>
+    <div class="tcc"><div class="tc-lbl">NTB Orders</div><div style="height:90px"><canvas id="tNTB"></canvas></div></div>
+  </div>
+
+  <div class="sec">Product Performance</div>
+  <div class="product-grid ani" id="productGrid"></div>
+
+  <div class="sec">Action Flags</div>
+  <div class="flag-grid ani" id="flagGrid"></div>
+
+  <div class="sec">New-to-Brand &amp; Efficiency Detail</div>
+  <div class="bot-row">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">NTB Orders by Product</span><span class="badge badge-dim" style="font-size:8px">0 = no SBV</span></div>
+      <div class="panel-body" style="padding:0">
+        <table class="dt"><thead><tr><th>Product</th><th>NTB Ord</th><th>NTB Sales</th><th>NTB%</th></tr></thead><tbody id="ntbBody"></tbody></table>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">ACoS vs Revenue — Efficiency Map</span><span class="badge badge-warn" style="font-size:8px">30% ACoS limit</span></div>
+      <div class="panel-body"><div class="chart-wrap" style="height:250px"><canvas id="cScatter"></canvas></div></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div>NIC Industries · CC_US Weekly Dashboard · <span id="footWeek"></span></div>
+  <div class="footer-gap" id="footerGaps"></div>
+</footer>
+</body>
+</html>
