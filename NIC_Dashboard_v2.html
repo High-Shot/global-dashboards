@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIC Industries — Weekly Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0d0f14;--bg2:#13161e;--bg3:#1a1e28;--bg4:#222736;--border:#2a2f3d;--border2:#363d52;--white:#f0f2f7;--muted:#8891a8;--dim:#4a5268;--electric:#4fc3f7;--green:#4ade80;--amber:#fbbf24;--red:#f87171;--orange:#fb923c;--purple:#a78bfa;--teal:#2dd4bf;--pink:#f472b6;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--white);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.4;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:999;}
+.mono{font-family:'DM Mono',monospace;}
+
+/* Header */
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:stretch;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.header-left{display:flex;align-items:center;gap:20px;padding:14px 0;}
+.brand{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--white);}
+.brand span{color:var(--electric);}
+.divider-v{width:1px;height:28px;background:var(--border);}
+.header-meta{display:flex;flex-direction:column;gap:1px;}
+.header-meta .lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;}
+.header-meta .val{font-family:'DM Mono',monospace;font-size:12px;color:var(--white);}
+.header-right{display:flex;align-items:center;gap:6px;padding:14px 0;}
+
+/* Badges */
+.badge{padding:3px 8px;border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;}
+.badge-crit{background:rgba(248,113,113,0.15);color:var(--red);border:1px solid rgba(248,113,113,0.3);}
+.badge-warn{background:rgba(251,191,36,0.12);color:var(--amber);border:1px solid rgba(251,191,36,0.25);}
+.badge-ok{background:rgba(74,222,128,0.1);color:var(--green);border:1px solid rgba(74,222,128,0.2);}
+.badge-info{background:rgba(79,195,247,0.1);color:var(--electric);border:1px solid rgba(79,195,247,0.2);}
+.badge-dim{background:rgba(74,82,104,0.3);color:var(--dim);border:1px solid var(--border);}
+
+/* Nav bars */
+.nav-row{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);}
+.mkt-bar{padding:0 32px;display:flex;align-items:stretch;gap:0;flex:1;}
+.mkt-tab{padding:10px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);border-bottom:2px solid transparent;cursor:pointer;transition:all 0.15s;user-select:none;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.mkt-tab:hover{color:var(--muted);border-bottom-color:var(--border2);}
+.mkt-tab.active{color:var(--electric);border-bottom-color:var(--electric);}
+.mkt-tab .cur{font-size:8px;color:var(--dim);font-weight:400;}
+.mkt-tab.active .cur{color:var(--electric);opacity:0.6;}
+.week-bar{padding:0 32px;display:flex;align-items:stretch;gap:0;overflow-x:auto;background:var(--bg3);border-bottom:1px solid var(--border);}
+.week-tab{padding:8px 16px;font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);border-bottom:2px solid transparent;cursor:pointer;transition:all 0.15s;user-select:none;white-space:nowrap;}
+.week-tab:hover{color:var(--muted);border-bottom-color:var(--border2);}
+.week-tab.active{color:var(--white);border-bottom-color:var(--white);}
+.week-tab .dot{width:5px;height:5px;border-radius:50%;display:inline-block;margin-left:2px;}
+.week-tab .dot-crit{background:var(--red);}
+.week-tab .dot-warn{background:var(--amber);}
+
+/* Trend bar */
+.trend-bar{background:var(--bg3);border-bottom:1px solid var(--border);padding:9px 32px;display:flex;align-items:center;gap:24px;overflow-x:auto;}
+.trend-item{display:flex;align-items:center;gap:7px;white-space:nowrap;}
+.trend-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;}
+.trend-v{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;}
+.trend-delta{font-size:9px;font-family:'DM Mono',monospace;padding:1px 5px;border-radius:2px;}
+.up-bad{color:var(--red);background:rgba(248,113,113,0.12);}
+.up-good{color:var(--green);background:rgba(74,222,128,0.1);}
+.down-bad{color:var(--red);background:rgba(248,113,113,0.12);}
+.down-good{color:var(--green);background:rgba(74,222,128,0.1);}
+.neutral{color:var(--dim);background:rgba(74,82,104,0.2);}
+.trend-div{width:1px;height:18px;background:var(--border);}
+
+/* Layout */
+.page{padding:22px 32px;max-width:1600px;margin:0 auto;}
+.sec{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin-bottom:9px;font-family:'DM Mono',monospace;}
+
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-bottom:22px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.kpi{background:var(--bg2);padding:13px 15px;position:relative;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi.ok::before{background:var(--green);}.kpi.warn::before{background:var(--amber);}.kpi.crit::before{background:var(--red);}.kpi.neutral::before{background:var(--electric);}
+.kpi-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;font-family:'DM Mono',monospace;}
+.kpi-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--white);line-height:1;margin-bottom:3px;}
+.kpi-val.crit{color:var(--red);}.kpi-val.warn{color:var(--amber);}.kpi-val.ok{color:var(--green);}
+.kpi-sub{font-size:9px;color:var(--dim);font-family:'DM Mono',monospace;}
+.kpi-sub.flag{color:var(--amber);}.kpi-sub.crit{color:var(--red);}.kpi-sub.ok{color:var(--green);}
+
+/* Panels & Charts */
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:22px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;}
+.four-col{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:22px;}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.panel-header{padding:9px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.panel-title{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'DM Mono',monospace;font-weight:500;}
+.panel-body{padding:14px;}
+.chart-wrap canvas{max-height:200px;}
+.chart-wrap.tall canvas{max-height:230px;}
+
+/* Marketplace cards (global view) */
+.mkt-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:22px;}
+.mc{background:var(--bg2);padding:14px 16px;cursor:pointer;transition:background 0.15s;position:relative;}
+.mc:hover{background:var(--bg3);}
+.mc-name{font-weight:600;font-size:13px;color:var(--white);margin-bottom:3px;display:flex;align-items:center;gap:8px;}
+.mc-name .mc-cur{font-size:9px;color:var(--dim);font-family:'DM Mono',monospace;font-weight:400;}
+.mc-rev{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--white);margin-bottom:8px;}
+.mc-row{display:flex;justify-content:space-between;margin-bottom:2px;}
+.mc-l{font-size:9px;color:var(--dim);font-family:'DM Mono',monospace;}
+.mc-v{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
+.mc-v.crit{color:var(--red);}.mc-v.warn{color:var(--amber);}.mc-v.ok{color:var(--green);}
+.mc-pct{position:absolute;top:14px;right:16px;font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);}
+
+/* Trend mini charts */
+.trend-charts{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:22px;}
+.tcc{background:var(--bg2);padding:12px 14px;}
+.tcc .tc-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;margin-bottom:8px;}
+
+/* Product grid */
+.product-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:22px;}
+.pc{background:var(--bg2);padding:11px 13px;position:relative;transition:background 0.15s;}
+.pc:hover{background:var(--bg3);}
+.pc.flagged{background:rgba(248,113,113,0.03);}.pc.warned{background:rgba(251,191,36,0.03);}
+.pc-bar{position:absolute;top:0;left:0;right:0;height:2px;}
+.pc-bar.crit{background:var(--red);}.pc-bar.warn{background:var(--amber);}.pc-bar.ok{background:var(--green);}
+.pc-name{font-weight:600;font-size:11px;color:var(--white);margin-bottom:7px;margin-top:4px;}
+.pc-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;}
+.pcl{font-size:9px;color:var(--dim);font-family:'DM Mono',monospace;}
+.pcv{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);font-weight:500;}
+.pcv.hi{color:var(--white);}.pcv.crit{color:var(--red);}.pcv.warn{color:var(--amber);}.pcv.ok{color:var(--green);}
+.eff-wrap{margin-top:7px;}
+.eff-lbl{display:flex;justify-content:space-between;margin-bottom:3px;}
+.eff-track{height:3px;background:var(--bg4);border-radius:2px;position:relative;overflow:hidden;}
+.eff-fill{height:100%;border-radius:2px;width:0%;transition:width 0.7s ease;}
+.eff-thresh{position:absolute;top:-3px;width:1px;height:9px;background:rgba(255,255,255,0.2);}
+
+/* Flags */
+.flag-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px;}
+.fc{border-radius:6px;padding:11px 13px;border:1px solid;}
+.fc.crit{background:rgba(248,113,113,0.06);border-color:rgba(248,113,113,0.25);}
+.fc.warn{background:rgba(251,191,36,0.06);border-color:rgba(251,191,36,0.2);}
+.fc.info{background:rgba(79,195,247,0.05);border-color:rgba(79,195,247,0.2);}
+.fc.ok{background:rgba(74,222,128,0.05);border-color:rgba(74,222,128,0.2);}
+.ft{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;margin-bottom:4px;}
+.fc.crit .ft{color:var(--red);}.fc.warn .ft{color:var(--amber);}.fc.info .ft{color:var(--electric);}.fc.ok .ft{color:var(--green);}
+.fp{font-size:11px;font-weight:600;color:var(--white);margin-bottom:3px;}
+.fd{font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:6px;}
+.fa{font-size:9px;color:var(--dim);font-family:'DM Mono',monospace;border-top:1px solid rgba(255,255,255,0.06);padding-top:5px;}
+.fc.crit .fa{color:rgba(248,113,113,0.7);}.fc.warn .fa{color:rgba(251,191,36,0.6);}.fc.info .fa{color:rgba(79,195,247,0.6);}
+
+/* Tables */
+.dt{width:100%;border-collapse:collapse;}
+.dt th{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);font-family:'DM Mono',monospace;font-weight:500;padding:5px 10px;text-align:right;border-bottom:1px solid var(--border);}
+.dt th:first-child{text-align:left;}
+.dt td{padding:7px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:right;border-bottom:1px solid var(--border);}
+.dt td:first-child{text-align:left;color:var(--white);font-size:10px;font-weight:500;}
+.dt tr:last-child td{border-bottom:none;}
+.dt tr:hover td{background:rgba(255,255,255,0.02);}
+.td-hi{color:var(--white)!important;}.td-z{color:var(--dim)!important;}.td-w{color:var(--amber)!important;}.td-c{color:var(--red)!important;}.td-ok{color:var(--green)!important;}
+
+/* Bot row */
+.bot-row{display:grid;grid-template-columns:1fr 1.4fr;gap:14px;margin-bottom:22px;}
+
+footer{border-top:1px solid var(--border);padding:12px 32px;display:flex;justify-content:space-between;align-items:center;color:var(--dim);font-size:9px;font-family:'DM Mono',monospace;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.ani{animation:fadeIn 0.3s ease both;}
+</style>
+</head>
+<body>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA — WE 3/14 (Mon 3/9 – Sat 3/14)
+// ═══════════════════════════════════════════════════════════════
+
+const MKT_META = {
+  GLOBAL: {name:"Global (All Markets)", currency:"", flag:""},
+  CC_US:  {name:"Cerakote Ceramics — US", currency:"$", flag:"US"},
+  CC_CA:  {name:"Cerakote Ceramics — CA", currency:"C$", flag:"CA"},
+  CC_UK:  {name:"Cerakote Ceramics — UK", currency:"£", flag:"UK"},
+  CC_FR:  {name:"Cerakote Ceramics — FR", currency:"€", flag:"FR"},
+};
+
+const WEEKS = [
+  {
+    id:"WE_0314", label:"WE 3/14", range:"3/9 – 3/14", fullLabel:"Week Ending Sat March 14, 2026",
+    markets: {
+      CC_US: {
+        acct:{revenue:450034,units:25764,sessions:120847,pageviews:165466,cvr:21.3,adSpend:38196,adSales:144153,organicSales:305881,acos:26.5,tacos:8.5,roas:3.8,ntbOrders:628,ntbSales:11463,ntbPct:17.7},
+        products:[
+          {name:"Headlight Kit",   status:"ok",  revenue:209643,units:11401,sessions:42355,pageviews:61834,cvr:26.9,adSpend:17086,adSales:65546,organic:144097,acos:26.1,tacos:8.1,roas:3.8,ntbOrders:219,ntbSales:4091,ntbPct:6.2,bsr:"#10 Auto · #1 Headlight"},
+          {name:"Trim Coat",       status:"ok",  revenue:68141,units:3733,sessions:17881,pageviews:25108,cvr:20.9,adSpend:3332,adSales:15989,organic:52151,acos:20.8,tacos:4.9,roas:4.8,ntbOrders:65,ntbSales:1110,ntbPct:7.7,bsr:"#116 Auto · #1 Plastic"},
+          {name:"Paint Sealant",   status:"warn",revenue:67434,units:3213,sessions:24522,pageviews:36683,cvr:13.1,adSpend:3423,adSales:11624,organic:55811,acos:29.5,tacos:5.1,roas:3.4,ntbOrders:140,ntbSales:2979,ntbPct:24.8,bsr:"#134 Auto · #1 Waxes"},
+          {name:"Tire Coat",       status:"warn",revenue:55147,units:3708,sessions:12808,pageviews:18106,cvr:29.0,adSpend:7002,adSales:26177,organic:28969,acos:26.7,tacos:12.7,roas:3.7,ntbOrders:159,ntbSales:2579,ntbPct:9.6,bsr:"#108 Auto · #1 Wheel"},
+          {name:"Plastic Restorer",status:"warn",revenue:14067,units:951,sessions:7189,pageviews:9206,cvr:13.2,adSpend:1963,adSales:8235,organic:5832,acos:23.8,tacos:14.0,roas:4.2,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"#642 Auto · #6 Plastic"},
+          {name:"Pro Ceramic",     status:"crit",revenue:10930,units:109,sessions:2378,pageviews:3295,cvr:4.6,adSpend:1575,adSales:4724,organic:6206,acos:33.3,tacos:14.4,roas:3.0,ntbOrders:10,ntbSales:253,ntbPct:9.8,bsr:"—"},
+          {name:"Microfiber Towels",status:"ok", revenue:7836,units:794,sessions:2459,pageviews:3128,cvr:32.3,adSpend:520,adSales:1937,organic:5900,acos:26.8,tacos:6.6,roas:3.7,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"#1,403 Auto"},
+          {name:"Glass Coat",      status:"warn",revenue:6215,units:499,sessions:4461,pageviews:5858,cvr:11.2,adSpend:1210,adSales:4090,organic:2125,acos:29.6,tacos:19.5,roas:3.4,ntbOrders:34,ntbSales:439,ntbPct:13.9,bsr:"#2,053 Auto"},
+          {name:"Interior Detailer",status:"crit",revenue:5001,units:413,sessions:3035,pageviews:4135,cvr:13.6,adSpend:878,adSales:2528,organic:2473,acos:34.7,tacos:17.6,roas:2.9,ntbOrders:1,ntbSales:12,ntbPct:0.6,bsr:"#2,973 Auto"},
+          {name:"Vehicle Shampoo", status:"crit",revenue:3090,units:176,sessions:1633,pageviews:2113,cvr:10.8,adSpend:1052,adSales:3302,organic:-213,acos:31.8,tacos:34.0,roas:3.1,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"#7,289 Auto"},
+        ],
+        flags:[
+          {type:"crit",title:"Critical",product:"Vehicle Shampoo",detail:"ACoS 31.8%, TACoS 34.0%. Ad sales exceed total revenue. Negative organic.",action:"Cut bids on SP_AT_SUB_CLOSE + SP_BR_car_soap. Target ACoS <30%."},
+          {type:"crit",title:"Critical",product:"Interior Detailer — ACoS 34.7%",detail:"TACoS 17.6%. Over threshold on both metrics.",action:"Pause EX campaigns. Review bids on COMP targeting."},
+          {type:"crit",title:"Critical",product:"Pro Ceramic — ACoS 33.3%",detail:"CVR 4.6% (lowest in portfolio). High-ticket product needs listing fix.",action:"Audit listing images + A+ content. Add video."},
+          {type:"warn",title:"Warning",product:"Tire Coat TACoS 12.7%",detail:"47% of revenue is ad-driven. Organic pull not scaling with spend.",action:"Shift budget from AT_CLOSE to SBV. Test branded defense."},
+          {type:"warn",title:"Warning",product:"Glass Coat TACoS 19.5%",detail:"$1 of every $5 goes to ads. Low organic traction.",action:"Review listing SEO. Consider price test."},
+          {type:"info",title:"Data Gap",product:"$21K+ unattributed (bundles, wheel sealant, aircraft)",detail:"31 ASINs not mapped. Wheel Sealant + Aircraft Coating need dedicated rows.",action:"Update Data_Map and add product rows before WE 3/21."},
+        ],
+      },
+      CC_CA: {
+        acct:{revenue:26202,units:1036,sessions:9276,pageviews:13359,cvr:11.2,adSpend:3284,adSales:16599,organicSales:9603,acos:19.8,tacos:12.5,roas:5.1,ntbOrders:48,ntbSales:0,ntbPct:6.3},
+        products:[
+          {name:"Headlight Kit",   status:"ok",  revenue:14582,units:542,sessions:4260,pageviews:6311,cvr:12.7,adSpend:1438,adSales:9640,organic:4942,acos:14.9,tacos:9.9,roas:6.7,ntbOrders:5,ntbSales:0,ntbPct:1.5,bsr:"—"},
+          {name:"Trim Coat",       status:"ok",  revenue:3888,units:156,sessions:1543,pageviews:2184,cvr:10.1,adSpend:432,adSales:2644,organic:1244,acos:16.3,tacos:11.1,roas:6.1,ntbOrders:12,ntbSales:0,ntbPct:9.8,bsr:"—"},
+          {name:"Tire Coat",       status:"warn",revenue:3680,units:168,sessions:1195,pageviews:1702,cvr:14.1,adSpend:602,adSales:2463,organic:1217,acos:24.4,tacos:16.4,roas:4.1,ntbOrders:29,ntbSales:0,ntbPct:39.7,bsr:"—"},
+          {name:"Paint Sealant",   status:"crit",revenue:1508,units:54,sessions:677,pageviews:1088,cvr:8.0,adSpend:361,adSales:836,organic:672,acos:43.1,tacos:23.9,roas:2.3,ntbOrders:2,ntbSales:0,ntbPct:4.8,bsr:"—"},
+          {name:"Glass Coat",      status:"crit",revenue:423,units:25,sessions:758,pageviews:968,cvr:3.3,adSpend:275,adSales:265,organic:158,acos:103.7,tacos:65.0,roas:1.0,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"—"},
+        ],
+        flags:[
+          {type:"crit",title:"Critical",product:"CA Glass Coat — ACoS 103.7%",detail:"Spending $275 to generate $265 in ad sales. Net loss on every ad dollar.",action:"Pause campaign immediately. Re-evaluate CA demand for Glass Coat."},
+          {type:"crit",title:"Critical",product:"CA Paint Sealant — ACoS 43.1%",detail:"TACoS 23.9%. Low CVR (8.0%) compounding the problem.",action:"Cut bids 30%. Review keyword relevance."},
+          {type:"warn",title:"Warning",product:"CA Tire Coat — TACoS 16.4%",detail:"ACoS 24.4% acceptable but organic ratio too low.",action:"Shift spend toward branded defense keywords."},
+        ],
+      },
+      CC_UK: {
+        acct:{revenue:23470,units:1685,sessions:9669,pageviews:13393,cvr:17.4,adSpend:4178,adSales:12421,organicSales:11049,acos:33.6,tacos:17.8,roas:3.0,ntbOrders:0,ntbSales:0,ntbPct:0},
+        products:[
+          {name:"Headlight Kit",   status:"warn",revenue:11286,units:727,sessions:3370,pageviews:4881,cvr:21.6,adSpend:1442,adSales:5668,organic:5619,acos:25.4,tacos:12.8,roas:3.9,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"—"},
+          {name:"Trim Coat",       status:"crit",revenue:4299,units:295,sessions:1816,pageviews:2550,cvr:16.2,adSpend:683,adSales:2075,organic:2224,acos:32.9,tacos:15.9,roas:3.0,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"—"},
+          {name:"Tire Coat",       status:"crit",revenue:3470,units:290,sessions:1565,pageviews:2088,cvr:18.5,adSpend:864,adSales:2411,organic:1059,acos:35.8,tacos:24.9,roas:2.8,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"—"},
+          {name:"Interior Detailer",status:"crit",revenue:1456,units:153,sessions:1008,pageviews:1325,cvr:15.2,adSpend:631,adSales:1097,organic:359,acos:57.5,tacos:43.3,roas:1.7,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"—"},
+          {name:"Paint Sealant",   status:"crit",revenue:1277,units:83,sessions:919,pageviews:1221,cvr:9.0,adSpend:331,adSales:828,organic:449,acos:39.9,tacos:25.9,roas:2.5,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"—"},
+        ],
+        flags:[
+          {type:"crit",title:"Critical",product:"UK Interior Detailer — ACoS 57.5%",detail:"TACoS 43.3%. Losing money on every ad. Only £359 organic.",action:"Pause all UK Interior Detailer campaigns. Rebuild with tighter targeting."},
+          {type:"crit",title:"Critical",product:"UK Tire Coat — ACoS 35.8%",detail:"TACoS 24.9%. £864 spend on £3,470 revenue. Organic only 30%.",action:"Cut bids 40%. Move budget to Headlight Kit which has better ROAS."},
+          {type:"crit",title:"Critical",product:"UK Paint Sealant — ACoS 39.9%",detail:"CVR 9.0% (lowest in UK). Low demand + high ad cost.",action:"Pause EX campaigns. Keep only branded defense live."},
+          {type:"warn",title:"Warning",product:"UK account-level ACoS 33.6%",detail:"3 of 5 products over 30% ACoS. UK ad strategy needs full review.",action:"Schedule UK-specific ad audit. Reallocate toward HL + Trim."},
+        ],
+      },
+      CC_FR: {
+        acct:{revenue:1290,units:57,sessions:646,pageviews:901,cvr:8.8,adSpend:520,adSales:780,organicSales:510,acos:66.6,tacos:40.3,roas:1.5,ntbOrders:0,ntbSales:0,ntbPct:0},
+        products:[
+          {name:"Headlight Kit",   status:"crit",revenue:1056,units:46,sessions:434,pageviews:621,cvr:10.6,adSpend:415,adSales:688,organic:368,acos:60.2,tacos:39.3,roas:1.7,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"—"},
+          {name:"Trim Coat",       status:"crit",revenue:234,units:11,sessions:166,pageviews:223,cvr:6.6,adSpend:88,adSales:73,organic:161,acos:119.7,tacos:37.4,roas:0.8,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"—"},
+          {name:"Glass Coat",      status:"crit",revenue:0,units:0,sessions:46,pageviews:57,cvr:0,adSpend:17,adSales:19,organic:-19,acos:90.5,tacos:0,roas:1.1,ntbOrders:0,ntbSales:0,ntbPct:0,bsr:"—"},
+        ],
+        flags:[
+          {type:"crit",title:"Critical",product:"FR account — ACoS 66.6%",detail:"Entire market is unprofitable on ads. €520 spend on €1,290 revenue. TACoS 40.3%.",action:"Pause all FR campaigns immediately. Rebuild with branded-only strategy."},
+          {type:"crit",title:"Critical",product:"FR Trim Coat — ACoS 119.7%",detail:"Spending €88 to generate €73 in ad sales. Pure loss.",action:"Kill campaign. No ad spend until organic traction develops."},
+          {type:"info",title:"Strategic",product:"FR market viability",detail:"Only 57 units across 3 products. Market may not justify ad spend yet.",action:"Go organic-only for 4 weeks. Reassess demand."},
+        ],
+      },
+    },
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const MKT_KEYS = ['GLOBAL','CC_US','CC_CA','CC_UK','CC_FR'];
+const MKT_COLORS = {CC_US:'#4fc3f7',CC_CA:'#4ade80',CC_UK:'#a78bfa',CC_FR:'#fbbf24'};
+const PC_COLORS = ['#4fc3f7','#4ade80','#fbbf24','#2dd4bf','#fb923c','#f87171','#a78bfa','#f59e0b','#34d399','#ef4444'];
+let wIdx=0, mktKey='GLOBAL', CH={};
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+const fC = (n,cur) => {const s=cur||'$'; return n>=1e6?s+(n/1e6).toFixed(2)+'M':n>=1000?s+(n/1000).toFixed(1)+'K':s+n.toFixed(0);};
+const fCF = (n,cur) => (cur||'$')+n.toLocaleString(undefined,{maximumFractionDigits:0});
+const fP = n => n.toFixed(1)+'%';
+const fX = n => n.toFixed(1)+'x';
+const fN = n => n>=1000?(n/1000).toFixed(1)+'K':String(n);
+
+function getCur(mk){return MKT_META[mk]?.currency||'$';}
+
+function getGlobalAcct(w){
+  const ms=w.markets, ks=Object.keys(ms);
+  const t={revenue:0,units:0,sessions:0,pageviews:0,adSpend:0,adSales:0,organicSales:0,ntbOrders:0,ntbSales:0};
+  ks.forEach(k=>{const a=ms[k].acct;for(let p in t)t[p]+=(a[p]||0);});
+  t.cvr=t.sessions?((t.units/t.sessions)*100):0;
+  t.acos=t.adSales?(t.adSpend/t.adSales*100):0;
+  t.tacos=t.revenue?(t.adSpend/t.revenue*100):0;
+  t.roas=t.adSpend?(t.adSales/t.adSpend):0;
+  t.ntbPct=t.ntbOrders>0?((t.ntbOrders/(t.ntbOrders+100))*100):0; // approx
+  return t;
+}
+
+function getMktData(w,mk){
+  if(mk==='GLOBAL') return {acct:getGlobalAcct(w),products:[],flags:[]};
+  return w.markets[mk]||{acct:{},products:[],flags:[]};
+}
+
+function delta(val,prev,higherIsBad){
+  if(prev===undefined||prev===null)return '<span class="trend-delta neutral">baseline</span>';
+  const d=val-prev,p=prev?((d/prev)*100).toFixed(1):'0',a=Math.abs(p);
+  const cls=higherIsBad?(d>0?'up-bad':'down-good'):(d>0?'up-good':'down-bad');
+  return `<span class="trend-delta ${cls}">${d>0?'▲':'▼'} ${a}%</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDERERS
+// ═══════════════════════════════════════════════════════════════
+function renderHeader(){
+  const w=WEEKS[wIdx];
+  document.getElementById('hWeek').textContent=w.fullLabel;
+  const d=getMktData(w,mktKey);
+  const a=d.acct;
+  document.getElementById('hMkt').textContent=MKT_META[mktKey].name;
+  const crits=mktKey==='GLOBAL'?Object.values(w.markets).reduce((s,m)=>s+m.flags.filter(f=>f.type==='crit').length,0):d.flags.filter(f=>f.type==='crit').length;
+  const warns=mktKey==='GLOBAL'?Object.values(w.markets).reduce((s,m)=>s+m.flags.filter(f=>f.type==='warn').length,0):d.flags.filter(f=>f.type==='warn').length;
+  document.getElementById('bCrit').textContent=crits+' Critical';
+  document.getElementById('bWarn').textContent=warns+' Warnings';
+  document.getElementById('bCrit').style.display=crits?'':'none';
+  document.getElementById('bWarn').style.display=warns?'':'none';
+}
+
+function renderMktTabs(){
+  document.querySelectorAll('.mkt-tab').forEach(t=>{
+    t.classList.toggle('active',t.dataset.mkt===mktKey);
+  });
+}
+
+function renderWeekTabs(){
+  const bar=document.getElementById('weekTabBar');
+  bar.innerHTML=WEEKS.map((w,i)=>{
+    const crits=Object.values(w.markets).reduce((s,m)=>s+m.flags.filter(f=>f.type==='crit').length,0);
+    const warns=Object.values(w.markets).reduce((s,m)=>s+m.flags.filter(f=>f.type==='warn').length,0);
+    return `<div class="week-tab${i===wIdx?' active':''}" onclick="switchWeek(${i})">${w.label} <span style="font-size:8px;color:var(--dim)">${w.range}</span>${crits?'<span class="dot dot-crit"></span>':''}${warns?'<span class="dot dot-warn"></span>':''}</div>`;
+  }).join('');
+}
+
+function renderTrendBar(){
+  const w=WEEKS[wIdx],a=getMktData(w,mktKey).acct;
+  const pw=wIdx>0?getMktData(WEEKS[wIdx-1],mktKey).acct:null;
+  const cur=mktKey==='GLOBAL'?'$':getCur(mktKey);
+  document.getElementById('trendBar').innerHTML=[
+    ['Revenue',fC(a.revenue,cur),'#f0f2f7',delta(a.revenue,pw?.revenue,false)],
+    ['Units',fN(a.units),'#8891a8',delta(a.units,pw?.units,false)],
+    ['Sessions',fN(a.sessions),'#8891a8',delta(a.sessions,pw?.sessions,false)],
+    ['CVR',fP(a.cvr||0),'#8891a8',''],
+    ['Ad Spend',fC(a.adSpend,cur),'#8891a8',delta(a.adSpend,pw?.adSpend,true)],
+    ['TACoS',fP(a.tacos||0),a.tacos>15?'#f87171':a.tacos>10?'#fbbf24':'#4ade80',delta(a.tacos,pw?.tacos,true)],
+    ['ACoS',fP(a.acos||0),a.acos>30?'#f87171':'#8891a8',delta(a.acos,pw?.acos,true)],
+    ['ROAS',fX(a.roas||0),'#8891a8',delta(a.roas,pw?.roas,false)],
+  ].map((r,i)=>(i>0?'<div class="trend-div"></div>':'')+`<div class="trend-item"><span class="trend-lbl">${r[0]}</span><span class="trend-v" style="color:${r[2]}">${r[1]}</span>${r[3]}</div>`).join('');
+}
+
+function renderKPIs(){
+  const a=getMktData(WEEKS[wIdx],mktKey).acct;
+  const cur=mktKey==='GLOBAL'?'$':getCur(mktKey);
+  const ts=a.tacos>15?'crit':a.tacos>10?'warn':'ok';
+  const as=a.acos>30?'crit':'ok';
+  document.getElementById('kpiRow').innerHTML=[
+    ['neutral','Total Revenue',fC(a.revenue,cur),'all products',''],
+    ['neutral','Units Sold',fN(a.units),'all SKUs',''],
+    ['neutral','Sessions',fN(a.sessions),'total traffic',''],
+    ['neutral','Blended CVR',fP(a.cvr||0),'units/sessions',''],
+    [ts,'TACoS',fP(a.tacos||0),'target <10%',ts!=='ok'?'flag':'ok'],
+    [as,'ACoS',fP(a.acos||0),'limit 30%',as!=='ok'?'crit':'ok'],
+    ['neutral','ROAS',fX(a.roas||0),'ad return',''],
+    ['neutral','Ad Spend',fC(a.adSpend,cur),'this week',''],
+  ].map(([s,l,v,sub,sc])=>`<div class="kpi ${s}"><div class="kpi-lbl">${l}</div><div class="kpi-val ${s==='ok'?'ok':s==='warn'?'warn':s==='crit'?'crit':''}">${v}</div><div class="kpi-sub ${sc}">${sub}</div></div>`).join('');
+}
+
+function renderGlobalView(){
+  const w=WEEKS[wIdx];
+  const mks=['CC_US','CC_CA','CC_UK','CC_FR'];
+  const totalRev=mks.reduce((s,k)=>s+(w.markets[k]?.acct.revenue||0),0);
+
+  // Marketplace cards
+  let html='<div class="sec">Marketplace Breakdown</div><div class="mkt-cards">';
+  mks.forEach(k=>{
+    const a=w.markets[k]?.acct||{};const cur=getCur(k);const pct=totalRev?((a.revenue/totalRev)*100).toFixed(1):0;
+    const ts=a.tacos>15?'crit':a.tacos>10?'warn':'ok';
+    const as=a.acos>30?'crit':'warn';
+    html+=`<div class="mc" onclick="switchMkt('${k}')">
+      <div class="mc-pct">${pct}% of rev</div>
+      <div class="mc-name">${MKT_META[k].flag} ${k.replace('CC_','')}<span class="mc-cur">${cur}</span></div>
+      <div class="mc-rev">${fCF(a.revenue||0,cur)}</div>
+      <div class="mc-row"><span class="mc-l">Units</span><span class="mc-v">${fN(a.units||0)}</span></div>
+      <div class="mc-row"><span class="mc-l">Sessions</span><span class="mc-v">${fN(a.sessions||0)}</span></div>
+      <div class="mc-row"><span class="mc-l">CVR</span><span class="mc-v">${fP(a.cvr||0)}</span></div>
+      <div class="mc-row"><span class="mc-l">Ad Spend</span><span class="mc-v">${fC(a.adSpend||0,cur)}</span></div>
+      <div class="mc-row"><span class="mc-l">TACoS</span><span class="mc-v ${ts}">${fP(a.tacos||0)}</span></div>
+      <div class="mc-row"><span class="mc-l">ACoS</span><span class="mc-v ${a.acos>30?'crit':''}">${fP(a.acos||0)}</span></div>
+      <div class="mc-row"><span class="mc-l">ROAS</span><span class="mc-v">${fX(a.roas||0)}</span></div>
+    </div>`;
+  });
+  html+='</div>';
+
+  // Revenue split chart + TACoS comparison + ACoS comparison
+  html+=`<div class="three-col">
+    <div class="panel"><div class="panel-header"><span class="panel-title">Revenue by Market</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="gRevMkt"></canvas></div></div></div>
+    <div class="panel"><div class="panel-header"><span class="panel-title">TACoS by Market</span><span class="badge badge-dim" style="font-size:8px">10% target</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="gTacosMkt"></canvas></div></div></div>
+    <div class="panel"><div class="panel-header"><span class="panel-title">Organic vs Ad-Driven by Market</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="gOrgMkt"></canvas></div></div></div>
+  </div>`;
+
+  // Top products across all markets
+  html+='<div class="sec">Top Products — All Markets (by revenue)</div>';
+  let allProds=[];
+  mks.forEach(k=>{(w.markets[k]?.products||[]).forEach(p=>allProds.push({...p,mkt:k,cur:getCur(k)}));});
+  allProds.sort((a,b)=>b.revenue-a.revenue);
+  html+='<div class="panel" style="margin-bottom:22px"><div class="panel-body" style="padding:0"><table class="dt"><thead><tr><th>Product</th><th>Mkt</th><th>Revenue</th><th>Units</th><th>Sessions</th><th>CVR</th><th>Ad Spend</th><th>ACoS</th><th>TACoS</th><th>ROAS</th></tr></thead><tbody>';
+  allProds.slice(0,15).forEach(p=>{
+    const ac=p.acos>30?'td-c':p.acos>25?'td-w':'';
+    const tc=p.tacos>20?'td-c':p.tacos>15?'td-w':'';
+    html+=`<tr><td>${p.name}</td><td style="color:${MKT_COLORS[p.mkt]}">${p.mkt.replace('CC_','')}</td><td class="td-hi">${fCF(p.revenue,p.cur)}</td><td>${fN(p.units)}</td><td>${fN(p.sessions)}</td><td>${fP(p.cvr)}</td><td>${fC(p.adSpend,p.cur)}</td><td class="${ac}">${fP(p.acos)}</td><td class="${tc}">${fP(p.tacos)}</td><td>${fX(p.roas)}</td></tr>`;
+  });
+  html+='</tbody></table></div></div>';
+
+  // All flags across markets
+  html+='<div class="sec">Action Flags — All Markets</div><div class="flag-grid">';
+  mks.forEach(k=>{
+    (w.markets[k]?.flags||[]).forEach(f=>{
+      html+=`<div class="fc ${f.type}"><div class="ft">${f.title} <span style="color:${MKT_COLORS[k]};opacity:0.8">${k.replace('CC_','')}</span></div><div class="fp">${f.product}</div><div class="fd">${f.detail}</div><div class="fa">${f.action}</div></div>`;
+    });
+  });
+  html+='</div>';
+
+  document.getElementById('mainContent').innerHTML=html;
+}
+
+function renderMktView(){
+  const w=WEEKS[wIdx], d=getMktData(w,mktKey);
+  const cur=getCur(mktKey);
+  const prods=d.products||[];
+  const pn=prods.map(p=>p.name.length>12?p.name.substring(0,10)+'..':p.name);
+
+  let html='';
+
+  // Charts row
+  html+=`<div class="sec">Revenue & Advertising Mix</div><div class="three-col">
+    <div class="panel"><div class="panel-header"><span class="panel-title">Revenue by Product</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cRevenue"></canvas></div></div></div>
+    <div class="panel"><div class="panel-header"><span class="panel-title">Organic vs Ad-Driven</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cOrganic"></canvas></div></div></div>
+    <div class="panel"><div class="panel-header"><span class="panel-title">TACoS by Product</span><span class="badge badge-dim" style="font-size:8px">10% target</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cTacos"></canvas></div></div></div>
+  </div>`;
+
+  // Product grid
+  const cols=Math.min(prods.length,5);
+  html+=`<div class="sec">Product Performance</div><div class="product-grid" style="grid-template-columns:repeat(${cols},1fr)">`;
+  prods.forEach((p,i)=>{
+    const vs=p.status==='crit'?'crit':p.status==='warn'?'warn':'ok';
+    const effMetric=p.tacos>20?'TACoS':p.acos>25?'ACoS':'TACoS';
+    const effVal=effMetric==='ACoS'?p.acos:p.tacos;
+    const effTarget=effMetric==='ACoS'?30:10;
+    const effMax=effMetric==='ACoS'?60:50;
+    const ep=Math.min(100,(effVal/effMax)*100);
+    const ec=p.status==='crit'?'var(--red)':p.status==='warn'?'var(--amber)':'var(--green)';
+    const tp=(effTarget/effMax)*100;
+    html+=`<div class="pc ${p.status==='crit'?'flagged':p.status==='warn'?'warned':''}">
+      <div class="pc-bar ${p.status}"></div>
+      <div class="pc-name">${p.name}</div>
+      <div class="pc-row"><span class="pcl">Revenue</span><span class="pcv hi">${fCF(p.revenue,cur)}</span></div>
+      <div class="pc-row"><span class="pcl">Units</span><span class="pcv">${fN(p.units)}</span></div>
+      <div class="pc-row"><span class="pcl">Sessions</span><span class="pcv">${fN(p.sessions)}</span></div>
+      <div class="pc-row"><span class="pcl">CVR</span><span class="pcv">${fP(p.cvr)}</span></div>
+      <div class="pc-row"><span class="pcl">Ad Spend</span><span class="pcv">${fCF(p.adSpend,cur)}</span></div>
+      <div class="pc-row"><span class="pcl">Organic</span><span class="pcv ${p.organic<0?'crit':''}">${fCF(Math.round(p.organic||0),cur)}</span></div>
+      <div class="eff-wrap">
+        <div class="eff-lbl"><span class="pcl">${effMetric}</span><span class="pcv ${vs}">${fP(effVal)} <span style="color:var(--dim);font-size:8px">/ ${effTarget}%</span></span></div>
+        <div class="eff-track"><div class="eff-fill" data-w="${ep}" style="background:${ec}"></div><div class="eff-thresh" style="left:${tp}%"></div></div>
+      </div>
+      ${p.bsr&&p.bsr!=='—'?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between"><span style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px">BSR</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--electric)">${p.bsr}</span></div>`:''}
+    </div>`;
+  });
+  html+='</div>';
+
+  // Flags
+  if(d.flags?.length){
+    html+='<div class="sec">Action Flags</div><div class="flag-grid">';
+    d.flags.forEach(f=>{
+      html+=`<div class="fc ${f.type}"><div class="ft">${f.title}</div><div class="fp">${f.product}</div><div class="fd">${f.detail}</div><div class="fa">${f.action}</div></div>`;
+    });
+    html+='</div>';
+  }
+
+  // NTB + Efficiency table
+  html+=`<div class="sec">Detail Table</div><div class="panel" style="margin-bottom:22px"><div class="panel-body" style="padding:0"><table class="dt"><thead><tr><th>Product</th><th>Revenue</th><th>Units</th><th>Sessions</th><th>CVR</th><th>Ad Spend</th><th>Ad Sales</th><th>Organic</th><th>ACoS</th><th>TACoS</th><th>ROAS</th><th>NTB Ord</th></tr></thead><tbody>`;
+  prods.forEach(p=>{
+    const ac=p.acos>30?'td-c':p.acos>25?'td-w':'';
+    const tc=p.tacos>20?'td-c':p.tacos>15?'td-w':'';
+    html+=`<tr><td>${p.name}</td><td class="td-hi">${fCF(p.revenue,cur)}</td><td>${fN(p.units)}</td><td>${fN(p.sessions)}</td><td>${fP(p.cvr)}</td><td>${fC(p.adSpend,cur)}</td><td>${fC(p.adSales,cur)}</td><td class="${p.organic<0?'td-c':''}">${fCF(Math.round(p.organic||0),cur)}</td><td class="${ac}">${fP(p.acos)}</td><td class="${tc}">${fP(p.tacos)}</td><td>${fX(p.roas)}</td><td class="${p.ntbOrders?'':'td-z'}">${p.ntbOrders||'—'}</td></tr>`;
+  });
+  html+='</tbody></table></div></div>';
+
+  document.getElementById('mainContent').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════════════════════
+function destroyAll(){Object.values(CH).forEach(c=>{try{c.destroy();}catch(e){}});CH={};}
+function mkChart(id,cfg){const el=document.getElementById(id);if(el)CH[id]=new Chart(el,cfg);}
+
+function buildGlobalCharts(){
+  const w=WEEKS[wIdx],mks=['CC_US','CC_CA','CC_UK','CC_FR'];
+  const labels=mks.map(k=>k.replace('CC_',''));
+  const revs=mks.map(k=>w.markets[k]?.acct.revenue||0);
+  const spends=mks.map(k=>w.markets[k]?.acct.adSpend||0);
+  const adsales=mks.map(k=>w.markets[k]?.acct.adSales||0);
+  const orgs=mks.map(k=>w.markets[k]?.acct.organicSales||0);
+  const tacs=mks.map(k=>w.markets[k]?.acct.tacos||0);
+  const cols=mks.map(k=>MKT_COLORS[k]);
+  const def={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1a1e28'},ticks:{font:{size:10}}},y:{grid:{color:'#1a1e28'}}}};
+
+  mkChart('gRevMkt',{type:'bar',data:{labels,datasets:[{data:revs,backgroundColor:cols.map(c=>c+'40'),borderColor:cols,borderWidth:1.5,borderRadius:3}]},options:{...def,scales:{x:def.scales.x,y:{...def.scales.y,ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k',font:{size:9}}}}}});
+
+  mkChart('gTacosMkt',{type:'bar',data:{labels,datasets:[{label:'TACoS',data:tacs,backgroundColor:tacs.map((v,i)=>v>15?'rgba(248,113,113,0.4)':v>10?'rgba(251,191,36,0.35)':'rgba(74,222,128,0.3)'),borderColor:tacs.map(v=>v>15?'#f87171':v>10?'#fbbf24':'#4ade80'),borderWidth:1.5,borderRadius:3},{label:'10% Target',data:[10,10,10,10],type:'line',borderColor:'rgba(255,255,255,0.15)',borderDash:[4,4],borderWidth:1,pointRadius:0,fill:false}]},options:{...def,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:9}}}},scales:{x:def.scales.x,y:{...def.scales.y,ticks:{callback:v=>v+'%',font:{size:9}}}}}});
+
+  mkChart('gOrgMkt',{type:'bar',data:{labels,datasets:[{label:'Organic',data:orgs,backgroundColor:'rgba(74,222,128,0.25)',borderColor:'#4ade80',borderWidth:1},{label:'Ad Sales',data:adsales,backgroundColor:'rgba(79,195,247,0.2)',borderColor:'#4fc3f7',borderWidth:1}]},options:{...def,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:9}}}},scales:{x:{stacked:true,grid:{color:'#1a1e28'},ticks:{font:{size:10}}},y:{stacked:true,grid:{color:'#1a1e28'},ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k',font:{size:9}}}}}});
+}
+
+function buildMktCharts(){
+  const d=getMktData(WEEKS[wIdx],mktKey);
+  const prods=d.products||[];
+  if(!prods.length)return;
+  const pn=prods.map(p=>p.name.length>12?p.name.substring(0,10)+'..':p.name);
+  const cur=getCur(mktKey);
+  const revs=prods.map(p=>p.revenue);
+  const ads=prods.map(p=>p.adSales);
+  const org=prods.map(p=>Math.max(0,(p.organic||0)));
+  const tacs=prods.map(p=>p.tacos);
+  const cols=prods.map((_,i)=>PC_COLORS[i%PC_COLORS.length]);
+  const def={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1a1e28'},ticks:{font:{size:9}}},y:{grid:{color:'#1a1e28'}}}};
+
+  mkChart('cRevenue',{type:'bar',data:{labels:pn,datasets:[{data:revs,backgroundColor:cols.map(c=>c+'30'),borderColor:cols,borderWidth:1.5,borderRadius:2}]},options:{...def,scales:{x:def.scales.x,y:{...def.scales.y,ticks:{callback:v=>cur+(v/1000).toFixed(0)+'k',font:{size:9}}}}}});
+
+  mkChart('cOrganic',{type:'bar',data:{labels:pn,datasets:[{label:'Organic',data:org,backgroundColor:'rgba(74,222,128,0.2)',borderColor:'#4ade80',borderWidth:1},{label:'Ad Sales',data:ads,backgroundColor:'rgba(79,195,247,0.17)',borderColor:'#4fc3f7',borderWidth:1}]},options:{...def,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:9}}}},scales:{x:{stacked:true,grid:{color:'#1a1e28'},ticks:{font:{size:9}}},y:{stacked:true,grid:{color:'#1a1e28'},ticks:{callback:v=>cur+(v/1000).toFixed(0)+'k',font:{size:9}}}}}});
+
+  mkChart('cTacos',{type:'bar',data:{labels:pn,datasets:[{label:'TACoS',data:tacs,backgroundColor:tacs.map(v=>v>15?'rgba(248,113,113,0.3)':v>10?'rgba(251,191,36,0.3)':'rgba(74,222,128,0.25)'),borderColor:tacs.map(v=>v>15?'#f87171':v>10?'#fbbf24':'#4ade80'),borderWidth:1.5,borderRadius:2},{label:'10% Target',data:new Array(prods.length).fill(10),type:'line',borderColor:'rgba(255,255,255,0.12)',borderDash:[4,4],borderWidth:1,pointRadius:0,fill:false}]},options:{...def,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:9}}}},scales:{x:def.scales.x,y:{...def.scales.y,ticks:{callback:v=>v+'%',font:{size:9}}}}}});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER ORCHESTRATOR
+// ═══════════════════════════════════════════════════════════════
+function render(){
+  renderHeader();
+  renderMktTabs();
+  renderWeekTabs();
+  renderTrendBar();
+  renderKPIs();
+  destroyAll();
+
+  if(mktKey==='GLOBAL'){
+    renderGlobalView();
+    requestAnimationFrame(()=>buildGlobalCharts());
+  } else {
+    renderMktView();
+    requestAnimationFrame(()=>{
+      buildMktCharts();
+      setTimeout(()=>{
+        document.querySelectorAll('.eff-fill').forEach((b,i)=>{
+          setTimeout(()=>{b.style.width=b.getAttribute('data-w')+'%';},i*35);
+        });
+      },60);
+    });
+  }
+
+  document.getElementById('footWeek').textContent=WEEKS[wIdx].fullLabel;
+  document.getElementById('footMkt').textContent=MKT_META[mktKey].name;
+}
+
+function switchMkt(mk){mktKey=mk;render();}
+function switchWeek(i){wIdx=i;render();}
+
+window.addEventListener('load',()=>render());
+</script>
+
+<header class="header">
+  <div class="header-left">
+    <div class="brand">NIC <span>INDUSTRIES</span></div>
+    <div class="divider-v"></div>
+    <div class="header-meta"><span class="lbl">View</span><span class="val" id="hMkt">—</span></div>
+    <div class="divider-v"></div>
+    <div class="header-meta"><span class="lbl">Week Ending</span><span class="val" id="hWeek">—</span></div>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-crit" id="bCrit">—</span>
+    <span class="badge badge-warn" id="bWarn">—</span>
+  </div>
+</header>
+
+<nav class="nav-row">
+  <div class="mkt-bar">
+    <div class="mkt-tab" data-mkt="GLOBAL" onclick="switchMkt('GLOBAL')">GLOBAL</div>
+    <div class="mkt-tab" data-mkt="CC_US" onclick="switchMkt('CC_US')">US <span class="cur">$</span></div>
+    <div class="mkt-tab" data-mkt="CC_CA" onclick="switchMkt('CC_CA')">CA <span class="cur">C$</span></div>
+    <div class="mkt-tab" data-mkt="CC_UK" onclick="switchMkt('CC_UK')">UK <span class="cur">£</span></div>
+    <div class="mkt-tab" data-mkt="CC_FR" onclick="switchMkt('CC_FR')">FR <span class="cur">€</span></div>
+  </div>
+</nav>
+<div class="week-bar" id="weekTabBar"></div>
+<div class="trend-bar" id="trendBar"></div>
+
+<div class="page">
+  <div class="sec">Account Overview</div>
+  <div class="kpi-row ani" id="kpiRow"></div>
+  <div id="mainContent"></div>
+</div>
+
+<footer>
+  <div>NIC Industries · <span id="footMkt">—</span> · <span id="footWeek">—</span></div>
+  <div style="color:var(--dim)">Mon–Sat weekly cadence · All data from Seller Central + Ad Console</div>
+</footer>
+
+</body>
+</html>
