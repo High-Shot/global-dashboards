@@ -170,7 +170,7 @@ footer{border-top:1px solid var(--border);padding:12px 32px;display:flex;justify
 // DATA — Auto-injected by exportDashboard() in Apps Script
 // ═══════════════════════════════════════════════════════════════
 
-const MKT_META = {"GLOBAL":{"name":"Global (All Markets)","currency":"","flag":""},"CC_US":{"name":"Cerakote Ceramics — US","currency":"$","flag":"US"},"CC_CA":{"name":"Cerakote Ceramics — CA","currency":"C$","flag":"CA"},"CC_UK":{"name":"Cerakote Ceramics — UK","currency":"£","flag":"UK"},"CC_FR":{"name":"Cerakote Ceramics — FR","currency":"€","flag":"FR"},"CC_DE":{"name":"Cerakote Ceramics — DE","currency":"€","flag":"DE"},"CC_IT":{"name":"Cerakote Ceramics — IT","currency":"€","flag":"IT"},"CC_ES":{"name":"Cerakote Ceramics — ES","currency":"€","flag":"ES"},"CC_NL":{"name":"Cerakote Ceramics — NL","currency":"€","flag":"NL"},"CC_MX":{"name":"Cerakote Ceramics — MX","currency":"$","flag":"MX"},"CL_US":{"name":"Cerakote Legacy — US","currency":"$","flag":"US"},"PP_US":{"name":"Prismatic Powders — US","currency":"$","flag":"US"}};
+const MKT_META = {"GLOBAL":{"name":"Global (All Markets)","currency":"","flag":""},"CC_US":{"name":"Cerakote Ceramics — US","currency":"$","flag":"US","label":"US AUTO"},"CC_CA":{"name":"Cerakote Ceramics — CA","currency":"C$","flag":"CA","label":"CA AUTO"},"CC_UK":{"name":"Cerakote Ceramics — UK","currency":"£","flag":"UK","label":"UK AUTO"},"CC_FR":{"name":"Cerakote Ceramics — FR","currency":"€","flag":"FR","label":"FR AUTO"},"CC_DE":{"name":"Cerakote Ceramics — DE","currency":"€","flag":"DE","label":"DE AUTO"},"CC_IT":{"name":"Cerakote Ceramics — IT","currency":"€","flag":"IT","label":"IT AUTO"},"CC_ES":{"name":"Cerakote Ceramics — ES","currency":"€","flag":"ES","label":"ES AUTO"},"CC_NL":{"name":"Cerakote Ceramics — NL","currency":"€","flag":"NL","label":"NL AUTO"},"CC_MX":{"name":"Cerakote Ceramics — MX","currency":"$","flag":"MX","label":"MX AUTO"},"CL_US":{"name":"Cerakote Legacy — US","currency":"$","flag":"US","label":"US LEGACY"},"PP_US":{"name":"Prismatic Powders — US","currency":"$","flag":"US","label":"US PRIS"}};
 const WEEKS = [
   {
     "id": "WE_0322",
@@ -4487,7 +4487,7 @@ function renderMktTabs(){
   bar.innerHTML=MKT_KEYS.map(k=>{
     if(k==='GLOBAL') return `<div class="mkt-tab${mktKey==='GLOBAL'?' active':''}" data-mkt="GLOBAL" onclick="switchMkt('GLOBAL')">GLOBAL</div>`;
     const m=MKT_META[k]||{};
-    return `<div class="mkt-tab${mktKey===k?' active':''}" data-mkt="${k}" onclick="switchMkt('${k}')">${m.flag||k} <span class="cur">${m.currency||''}</span></div>`;
+    return `<div class="mkt-tab${mktKey===k?' active':''}" data-mkt="${k}" onclick="switchMkt('${k}')">${m.label||m.flag||k} <span class="cur">${m.currency||''}</span></div>`;
   }).join('');
 }
 
@@ -4557,7 +4557,7 @@ function renderGlobalView(){
     const ts=a.tacos>15?'crit':a.tacos>10?'warn':'ok';
     html+=`<div class="mc" onclick="switchMkt('${k}')">
       <div class="mc-pct">${pct}% of rev</div>
-      <div class="mc-name">${MKT_META[k]?.flag||k} ${k.replace(/^[A-Z]+_/,'')}<span class="mc-cur">${cur}</span></div>
+      <div class="mc-name">${MKT_META[k]?.label||k}<span class="mc-cur">${cur}</span></div>
       <div class="mc-rev">${fCF(a.revenue||0,cur)}</div>
       <div class="mc-row"><span class="mc-l">Units</span><span class="mc-v">${fN(a.units||0)}</span></div>
       <div class="mc-row"><span class="mc-l">Sessions</span><span class="mc-v">${fN(a.sessions||0)}</span></div>
@@ -4589,27 +4589,14 @@ function renderGlobalView(){
     </div>`;
   }
 
-  // Top products table
-  let allProds=[];
-  mks.forEach(k=>{(w.markets[k]?.products||[]).forEach(p=>allProds.push({...p,mkt:k,cur:getCur(k)}));});
-  allProds.sort((a,b)=>b.revenue-a.revenue);
-  if(allProds.length){
-    html+='<div class="sec">Top Products — All Markets (by revenue)</div>';
-    html+='<div class="panel" style="margin-bottom:22px"><div class="panel-body" style="padding:0"><table class="dt"><thead><tr><th>Product</th><th>Mkt</th><th>Revenue</th><th>Units</th><th>Sessions</th><th>CVR</th><th>Ad Spend</th><th>ACoS</th><th>TACoS</th><th>ROAS</th></tr></thead><tbody>';
-    allProds.slice(0,20).forEach(p=>{
-      const ac=p.acos>30?'td-c':p.acos>25?'td-w':'';
-      const tc=p.tacos>20?'td-c':p.tacos>15?'td-w':'';
-      html+=`<tr><td>${p.name}</td><td style="color:${MKT_COLORS[p.mkt]||'#8891a8'}">${p.mkt.replace(/^[A-Z]+_/,'')}</td><td class="td-hi">${fCF(p.revenue,p.cur)}</td><td>${fN(p.units)}</td><td>${fN(p.sessions)}</td><td>${fP(p.cvr)}</td><td>${fC(p.adSpend,p.cur)}</td><td class="${ac}">${fP(p.acos)}</td><td class="${tc}">${fP(p.tacos)}</td><td>${fX(p.roas)}</td></tr>`;
-    });
-    html+='</tbody></table></div></div>';
-  }
+  // Top products table removed per user request
 
   // All flags
   const flags=getAllFlags(w);
   if(flags.length){
     html+='<div class="sec">Action Flags — All Markets</div><div class="flag-grid">';
     flags.forEach(f=>{
-      const mktLabel=f.mkt?f.mkt.replace(/^[A-Z]+_/,''):'';
+      const mktLabel=f.mkt?(MKT_META[f.mkt]?.label||f.mkt):'';
       const mktColor=MKT_COLORS[f.mkt]||'#8891a8';
       html+=`<div class="fc ${f.type}"><div class="ft">${f.title} <span style="color:${mktColor};opacity:0.8">${mktLabel}</span></div><div class="fp">${f.product}</div><div class="fd">${f.detail}</div><div class="fa">${f.action}</div></div>`;
     });
@@ -4622,46 +4609,8 @@ function renderGlobalView(){
 function renderMktView(){
   const w=WEEKS[wIdx], d=getMktData(w,mktKey);
   const cur=getCur(mktKey);
-  const prods=d.products||[];
 
   let html='';
-
-  if(prods.length){
-    const pn=prods.map(p=>p.name.length>14?p.name.substring(0,12)+'..':p.name);
-    html+=`<div class="sec">Revenue & Advertising Mix</div><div class="three-col">
-      <div class="panel"><div class="panel-header"><span class="panel-title">Revenue by Product</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cRevenue"></canvas></div></div></div>
-      <div class="panel"><div class="panel-header"><span class="panel-title">Organic vs Ad-Driven</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cOrganic"></canvas></div></div></div>
-      <div class="panel"><div class="panel-header"><span class="panel-title">TACoS by Product</span><span class="badge badge-dim" style="font-size:8px">10% target</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cTacos"></canvas></div></div></div>
-    </div>`;
-
-    // Product grid
-    html+=`<div class="sec">Product Performance</div><div class="product-grid">`;
-    prods.forEach((p,i)=>{
-      const vs=p.status||'ok';
-      const effVal=p.tacos;const effTarget=10;const effMax=50;
-      const ep=Math.min(100,(effVal/effMax)*100);
-      const ec=vs==='crit'?'var(--red)':vs==='warn'?'var(--amber)':'var(--green)';
-      const tp=(effTarget/effMax)*100;
-      html+=`<div class="pc ${vs==='crit'?'flagged':vs==='warn'?'warned':''}">
-        <div class="pc-bar ${vs}"></div>
-        <div class="pc-name">${p.name}</div>
-        <div class="pc-row"><span class="pcl">Revenue</span><span class="pcv hi">${fCF(p.revenue,cur)}</span></div>
-        <div class="pc-row"><span class="pcl">Units</span><span class="pcv">${fN(p.units)}</span></div>
-        <div class="pc-row"><span class="pcl">Sessions</span><span class="pcv">${fN(p.sessions)}</span></div>
-        <div class="pc-row"><span class="pcl">CVR</span><span class="pcv">${fP(p.cvr)}</span></div>
-        <div class="pc-row"><span class="pcl">Ad Spend</span><span class="pcv">${fCF(p.adSpend,cur)}</span></div>
-        <div class="pc-row"><span class="pcl">Organic</span><span class="pcv ${p.organic<0?'crit':''}">${fCF(Math.round(p.organic||0),cur)}</span></div>
-        <div class="eff-wrap">
-          <div class="eff-lbl"><span class="pcl">TACoS</span><span class="pcv ${vs}">${fP(effVal)} <span style="color:var(--dim);font-size:8px">/ ${effTarget}%</span></span></div>
-          <div class="eff-track"><div class="eff-fill" data-w="${ep}" style="background:${ec}"></div><div class="eff-thresh" style="left:${tp}%"></div></div>
-        </div>
-        ${p.bsr&&p.bsr!=='—'?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between"><span style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px">BSR</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--electric)">${p.bsr}</span></div>`:''}
-      </div>`;
-    });
-    html+='</div>';
-  } else {
-    html+='<div class="sec" style="color:var(--muted);margin:40px 0">Account-level data only. No product breakdown available for this marketplace.</div>';
-  }
 
   // Flags
   const flags=d.flags||[];
@@ -4671,17 +4620,6 @@ function renderMktView(){
       html+=`<div class="fc ${f.type}"><div class="ft">${f.title}</div><div class="fp">${f.product}</div><div class="fd">${f.detail}</div><div class="fa">${f.action}</div></div>`;
     });
     html+='</div>';
-  }
-
-  // Detail table
-  if(prods.length){
-    html+=`<div class="sec">Detail Table</div><div class="panel" style="margin-bottom:22px"><div class="panel-body" style="padding:0"><table class="dt"><thead><tr><th>Product</th><th>Revenue</th><th>Units</th><th>Sessions</th><th>CVR</th><th>Ad Spend</th><th>Ad Sales</th><th>Organic</th><th>ACoS</th><th>TACoS</th><th>ROAS</th><th>NTB Ord</th></tr></thead><tbody>`;
-    prods.forEach(p=>{
-      const ac=p.acos>30?'td-c':p.acos>25?'td-w':'';
-      const tc=p.tacos>20?'td-c':p.tacos>15?'td-w':'';
-      html+=`<tr><td>${p.name}</td><td class="td-hi">${fCF(p.revenue,cur)}</td><td>${fN(p.units)}</td><td>${fN(p.sessions)}</td><td>${fP(p.cvr)}</td><td>${fC(p.adSpend,cur)}</td><td>${fC(p.adSales,cur)}</td><td class="${p.organic<0?'td-c':''}">${fCF(Math.round(p.organic||0),cur)}</td><td class="${ac}">${fP(p.acos)}</td><td class="${tc}">${fP(p.tacos)}</td><td>${fX(p.roas)}</td><td class="${p.ntbOrders?'':'td-z'}">${p.ntbOrders||'—'}</td></tr>`;
-    });
-    html+='</tbody></table></div></div>';
   }
 
   document.getElementById('mainContent').innerHTML=html;
@@ -4695,8 +4633,8 @@ function mkChart(id,cfg){const el=document.getElementById(id);if(el)CH[id]=new C
 
 function buildGlobalCharts(){
   const w=WEEKS[wIdx];
-  const mks=Object.keys(w.markets).filter(k=>k.startsWith('CC_'));
-  const labels=mks.map(k=>k.replace('CC_',''));
+  const mks=Object.keys(w.markets);
+  const labels=mks.map(k=>MKT_META[k]?.label||k);
   const revs=mks.map(k=>w.markets[k]?.acct.revenue||0);
   const orgs=mks.map(k=>w.markets[k]?.acct.organicSales||0);
   const adsales=mks.map(k=>w.markets[k]?.acct.adSales||0);
@@ -4723,23 +4661,7 @@ function buildGlobalCharts(){
 }
 
 function buildMktCharts(){
-  const d=getMktData(WEEKS[wIdx],mktKey);
-  const prods=d.products||[];
-  if(!prods.length)return;
-  const pn=prods.map(p=>p.name.length>14?p.name.substring(0,12)+'..':p.name);
-  const cur=getCur(mktKey);
-  const revs=prods.map(p=>p.revenue);
-  const ads=prods.map(p=>p.adSales);
-  const org=prods.map(p=>Math.max(0,(p.organic||0)));
-  const tacs=prods.map(p=>p.tacos);
-  const cols=prods.map((_,i)=>PC_COLORS[i%PC_COLORS.length]);
-  const def={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1a1e28'},ticks:{font:{size:9}}},y:{grid:{color:'#1a1e28'}}}};
-
-  mkChart('cRevenue',{type:'bar',data:{labels:pn,datasets:[{data:revs,backgroundColor:cols.map(c=>c+'30'),borderColor:cols,borderWidth:1.5,borderRadius:2}]},options:{...def,scales:{x:def.scales.x,y:{...def.scales.y,ticks:{callback:v=>cur+(v/1000).toFixed(0)+'k',font:{size:9}}}}}});
-
-  mkChart('cOrganic',{type:'bar',data:{labels:pn,datasets:[{label:'Organic',data:org,backgroundColor:'rgba(74,222,128,0.2)',borderColor:'#4ade80',borderWidth:1},{label:'Ad Sales',data:ads,backgroundColor:'rgba(79,195,247,0.17)',borderColor:'#4fc3f7',borderWidth:1}]},options:{...def,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:9}}}},scales:{x:{stacked:true,grid:{color:'#1a1e28'},ticks:{font:{size:9}}},y:{stacked:true,grid:{color:'#1a1e28'},ticks:{callback:v=>cur+(v/1000).toFixed(0)+'k',font:{size:9}}}}}});
-
-  mkChart('cTacos',{type:'bar',data:{labels:pn,datasets:[{label:'TACoS',data:tacs,backgroundColor:tacs.map(v=>v>15?'rgba(248,113,113,0.3)':v>10?'rgba(251,191,36,0.3)':'rgba(74,222,128,0.25)'),borderColor:tacs.map(v=>v>15?'#f87171':v>10?'#fbbf24':'#4ade80'),borderWidth:1.5,borderRadius:2},{label:'10% Target',data:new Array(prods.length).fill(10),type:'line',borderColor:'rgba(255,255,255,0.12)',borderDash:[4,4],borderWidth:1,pointRadius:0,fill:false}]},options:{...def,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:9}}}},scales:{x:def.scales.x,y:{...def.scales.y,ticks:{callback:v=>v+'%',font:{size:9}}}}}});
+  // Product charts removed — marketplace view shows account-level data + flags only
 }
 
 // ═══════════════════════════════════════════════════════════════
