@@ -4609,8 +4609,46 @@ function renderGlobalView(){
 function renderMktView(){
   const w=WEEKS[wIdx], d=getMktData(w,mktKey);
   const cur=getCur(mktKey);
+  const prods=d.products||[];
 
   let html='';
+
+  if(prods.length){
+    const pn=prods.map(p=>p.name.length>14?p.name.substring(0,12)+'..':p.name);
+    html+=`<div class="sec">Revenue & Advertising Mix</div><div class="three-col">
+      <div class="panel"><div class="panel-header"><span class="panel-title">Revenue by Product</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cRevenue"></canvas></div></div></div>
+      <div class="panel"><div class="panel-header"><span class="panel-title">Organic vs Ad-Driven</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cOrganic"></canvas></div></div></div>
+      <div class="panel"><div class="panel-header"><span class="panel-title">TACoS by Product</span><span class="badge badge-dim" style="font-size:8px">10% target</span></div><div class="panel-body"><div class="chart-wrap tall"><canvas id="cTacos"></canvas></div></div></div>
+    </div>`;
+
+    // Product grid
+    html+=`<div class="sec">Product Performance</div><div class="product-grid">`;
+    prods.forEach((p,i)=>{
+      const vs=p.status||'ok';
+      const effVal=p.tacos;const effTarget=10;const effMax=50;
+      const ep=Math.min(100,(effVal/effMax)*100);
+      const ec=vs==='crit'?'var(--red)':vs==='warn'?'var(--amber)':'var(--green)';
+      const tp=(effTarget/effMax)*100;
+      html+=`<div class="pc ${vs==='crit'?'flagged':vs==='warn'?'warned':''}">
+        <div class="pc-bar ${vs}"></div>
+        <div class="pc-name">${p.name}</div>
+        <div class="pc-row"><span class="pcl">Revenue</span><span class="pcv hi">${fCF(p.revenue,cur)}</span></div>
+        <div class="pc-row"><span class="pcl">Units</span><span class="pcv">${fN(p.units)}</span></div>
+        <div class="pc-row"><span class="pcl">Sessions</span><span class="pcv">${fN(p.sessions)}</span></div>
+        <div class="pc-row"><span class="pcl">CVR</span><span class="pcv">${fP(p.cvr)}</span></div>
+        <div class="pc-row"><span class="pcl">Ad Spend</span><span class="pcv">${fCF(p.adSpend,cur)}</span></div>
+        <div class="pc-row"><span class="pcl">Organic</span><span class="pcv ${p.organic<0?'crit':''}">${fCF(Math.round(p.organic||0),cur)}</span></div>
+        <div class="eff-wrap">
+          <div class="eff-lbl"><span class="pcl">TACoS</span><span class="pcv ${vs}">${fP(effVal)} <span style="color:var(--dim);font-size:8px">/ ${effTarget}%</span></span></div>
+          <div class="eff-track"><div class="eff-fill" data-w="${ep}" style="background:${ec}"></div><div class="eff-thresh" style="left:${tp}%"></div></div>
+        </div>
+        ${p.bsr&&p.bsr!=='—'?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between"><span style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px">BSR</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--electric)">${p.bsr}</span></div>`:''}
+      </div>`;
+    });
+    html+='</div>';
+  } else {
+    html+='<div class="sec" style="color:var(--muted);margin:40px 0">Account-level data only. No product breakdown available for this marketplace.</div>';
+  }
 
   // Flags
   const flags=d.flags||[];
@@ -4661,7 +4699,23 @@ function buildGlobalCharts(){
 }
 
 function buildMktCharts(){
-  // Product charts removed — marketplace view shows account-level data + flags only
+  const d=getMktData(WEEKS[wIdx],mktKey);
+  const prods=d.products||[];
+  if(!prods.length)return;
+  const pn=prods.map(p=>p.name.length>14?p.name.substring(0,12)+'..':p.name);
+  const cur=getCur(mktKey);
+  const revs=prods.map(p=>p.revenue);
+  const ads=prods.map(p=>p.adSales);
+  const org=prods.map(p=>Math.max(0,(p.organic||0)));
+  const tacs=prods.map(p=>p.tacos);
+  const cols=prods.map((_,i)=>PC_COLORS[i%PC_COLORS.length]);
+  const def={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1a1e28'},ticks:{font:{size:9}}},y:{grid:{color:'#1a1e28'}}}};
+
+  mkChart('cRevenue',{type:'bar',data:{labels:pn,datasets:[{data:revs,backgroundColor:cols.map(c=>c+'30'),borderColor:cols,borderWidth:1.5,borderRadius:2}]},options:{...def,scales:{x:def.scales.x,y:{...def.scales.y,ticks:{callback:v=>cur+(v/1000).toFixed(0)+'k',font:{size:9}}}}}});
+
+  mkChart('cOrganic',{type:'bar',data:{labels:pn,datasets:[{label:'Organic',data:org,backgroundColor:'rgba(74,222,128,0.2)',borderColor:'#4ade80',borderWidth:1},{label:'Ad Sales',data:ads,backgroundColor:'rgba(79,195,247,0.17)',borderColor:'#4fc3f7',borderWidth:1}]},options:{...def,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:9}}}},scales:{x:{stacked:true,grid:{color:'#1a1e28'},ticks:{font:{size:9}}},y:{stacked:true,grid:{color:'#1a1e28'},ticks:{callback:v=>cur+(v/1000).toFixed(0)+'k',font:{size:9}}}}}});
+
+  mkChart('cTacos',{type:'bar',data:{labels:pn,datasets:[{label:'TACoS',data:tacs,backgroundColor:tacs.map(v=>v>15?'rgba(248,113,113,0.3)':v>10?'rgba(251,191,36,0.3)':'rgba(74,222,128,0.25)'),borderColor:tacs.map(v=>v>15?'#f87171':v>10?'#fbbf24':'#4ade80'),borderWidth:1.5,borderRadius:2},{label:'10% Target',data:new Array(prods.length).fill(10),type:'line',borderColor:'rgba(255,255,255,0.12)',borderDash:[4,4],borderWidth:1,pointRadius:0,fill:false}]},options:{...def,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:9}}}},scales:{x:def.scales.x,y:{...def.scales.y,ticks:{callback:v=>v+'%',font:{size:9}}}}}});
 }
 
 // ═══════════════════════════════════════════════════════════════
