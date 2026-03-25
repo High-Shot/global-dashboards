@@ -156,6 +156,14 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .tcc .tc-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;margin-bottom:8px;}
 
 footer{border-top:1px solid var(--border);padding:12px 32px;display:flex;justify-content:space-between;align-items:center;color:var(--dim);font-size:9px;font-family:'DM Mono',monospace;}
+/* Filter bar */
+.filter-bar{display:flex;align-items:center;gap:20px;background:var(--bg3);border-bottom:1px solid var(--border);padding:7px 32px;}
+.filter-group{display:flex;align-items:center;gap:4px;}
+.filter-label{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;margin-right:6px;}
+.filter-btn{padding:4px 12px;border-radius:3px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;letter-spacing:0.5px;color:var(--dim);background:transparent;border:1px solid var(--border);cursor:pointer;transition:all 0.15s;}
+.filter-btn:hover{color:var(--muted);border-color:var(--border2);}
+.filter-btn.active{color:var(--electric);background:rgba(79,195,247,0.08);border-color:rgba(79,195,247,0.3);}
+
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 .ani{animation:fadeIn 0.3s ease both;}
 
@@ -4417,6 +4425,8 @@ const MKT_COLORS = {CC_US:'#4fc3f7',CC_CA:'#4ade80',CC_UK:'#a78bfa',CC_FR:'#fbbf
 // ═══════════════════════════════════════════════════════════════
 const PC_COLORS = ['#4fc3f7','#4ade80','#fbbf24','#2dd4bf','#fb923c','#f87171','#a78bfa','#f59e0b','#34d399','#ef4444','#94a3b8'];
 let wIdx=0, mktKey='GLOBAL', CH={};
+let brandFilter='ALL'; // 'ALL' or 'CC'
+let viewMode='WEEKLY'; // 'WEEKLY' or 'MTD'
 
 // ═══════════════════════════════════════════════════════════════
 // HELPERS
@@ -4429,8 +4439,14 @@ const fN = n => n>=1000?(n/1000).toFixed(1)+'K':String(n);
 
 function getCur(mk){return MKT_META[mk]?.currency||'$';}
 
+// Filter market keys based on brand filter
+function filterMkts(ks){
+  if(brandFilter==='CC') return ks.filter(k=>k.startsWith('CC_'));
+  return ks;
+}
+
 function getGlobalAcct(w){
-  const ms=w.markets, ks=Object.keys(ms);
+  const ms=w.markets, ks=filterMkts(Object.keys(ms));
   const t={revenue:0,units:0,sessions:0,pageviews:0,adSpend:0,adSales:0,organicSales:0,ntbOrders:0,ntbSales:0};
   ks.forEach(k=>{const a=ms[k].acct;for(let p in t)t[p]+=(a[p]||0);});
   t.cvr=t.sessions?((t.units/t.sessions)*100):0;
@@ -4441,6 +4457,85 @@ function getGlobalAcct(w){
   return t;
 }
 
+// MTD: aggregate multiple weeks into one virtual week
+function getMTDWeek(){
+  if(WEEKS.length===0) return WEEKS[0];
+  // Determine current month from the selected week
+  const selWeek=WEEKS[wIdx];
+  const selLabel=selWeek.label; // "WE 3/22"
+  const monthMatch=selLabel.match(/WE (\d+)\//);
+  const targetMonth=monthMatch?parseInt(monthMatch[1]):null;
+  if(!targetMonth) return selWeek;
+
+  // Find all weeks in the same month
+  const monthWeeks=WEEKS.filter(w=>{
+    const m=w.label.match(/WE (\d+)\//);
+    return m && parseInt(m[1])===targetMonth;
+  });
+
+  if(monthWeeks.length<=1) return monthWeeks[0]||selWeek;
+
+  // Aggregate markets across all weeks in the month
+  const allMktKeys=new Set();
+  monthWeeks.forEach(w=>Object.keys(w.markets).forEach(k=>allMktKeys.add(k)));
+
+  const mtdMarkets={};
+  allMktKeys.forEach(k=>{
+    const sumAcct={revenue:0,units:0,sessions:0,pageviews:0,adSpend:0,adSales:0,organicSales:0,ntbOrders:0,ntbSales:0,clicks:0,impressions:0};
+    monthWeeks.forEach(w=>{
+      const a=w.markets[k]?.acct;
+      if(a) for(let p in sumAcct) sumAcct[p]+=(a[p]||0);
+    });
+    // Recalculate ratio metrics from summed components
+    sumAcct.cvr=sumAcct.sessions?((sumAcct.units/sumAcct.sessions)*100):0;
+    sumAcct.acos=sumAcct.adSales?(sumAcct.adSpend/sumAcct.adSales*100):0;
+    sumAcct.tacos=sumAcct.revenue?(sumAcct.adSpend/sumAcct.revenue*100):0;
+    sumAcct.roas=sumAcct.adSpend?(sumAcct.adSales/sumAcct.adSpend):0;
+    sumAcct.ntbPct=sumAcct.units>0?((sumAcct.ntbOrders/sumAcct.units)*100):0;
+
+    // Aggregate products: sum by product name
+    const prodMap={};
+    monthWeeks.forEach(w=>{
+      (w.markets[k]?.products||[]).forEach(p=>{
+        if(!prodMap[p.name]) prodMap[p.name]={name:p.name,revenue:0,units:0,sessions:0,adSpend:0,adSales:0,organicSales:0,ntbOrders:0,clicks:0,impressions:0,bsr:p.bsr};
+        const t=prodMap[p.name];
+        t.revenue+=(p.revenue||0);t.units+=(p.units||0);t.sessions+=(p.sessions||0);
+        t.adSpend+=(p.adSpend||0);t.adSales+=(p.adSales||0);t.organicSales+=(p.organicSales||0);
+        t.ntbOrders+=(p.ntbOrders||0);
+      });
+    });
+    const prods=Object.values(prodMap).map(p=>{
+      p.cvr=p.sessions?((p.units/p.sessions)*100):0;
+      p.acos=p.adSales?(p.adSpend/p.adSales*100):0;
+      p.tacos=p.revenue?(p.adSpend/p.revenue*100):0;
+      p.roas=p.adSpend?(p.adSales/p.adSpend):0;
+      p.organic=p.revenue-p.adSales;
+      p.status=p.acos>35?'crit':p.acos>28?'warn':'ok';
+      return p;
+    });
+    prods.sort((a,b)=>b.revenue-a.revenue);
+
+    // Collect flags from latest week only (avoid duplicates)
+    const latestFlags=monthWeeks[0]?.markets[k]?.flags||[];
+
+    mtdMarkets[k]={acct:sumAcct,products:prods,flags:latestFlags};
+  });
+
+  const monthNames=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return {
+    label:'MTD '+monthNames[targetMonth],
+    fullLabel:'Month-to-Date: '+monthNames[targetMonth]+' 2026 ('+monthWeeks.length+' weeks)',
+    range:monthWeeks[monthWeeks.length-1].label+' → '+monthWeeks[0].label,
+    markets:mtdMarkets
+  };
+}
+
+// Get the active week data (respects MTD mode)
+function getActiveWeek(){
+  if(viewMode==='MTD') return getMTDWeek();
+  return WEEKS[wIdx];
+}
+
 function getMktData(w,mk){
   if(mk==='GLOBAL') return {acct:getGlobalAcct(w),products:[],flags:getAllFlags(w)};
   return w.markets[mk]||{acct:{revenue:0,units:0,sessions:0,pageviews:0,adSpend:0,adSales:0,organicSales:0,acos:0,tacos:0,roas:0,ntbOrders:0,ntbSales:0,ntbPct:0,cvr:0},products:[],flags:[]};
@@ -4448,10 +4543,10 @@ function getMktData(w,mk){
 
 function getAllFlags(w){
   const all=[];
-  Object.entries(w.markets).forEach(([k,m])=>{
-    (m.flags||[]).forEach(f=>all.push({...f,mkt:k}));
+  const ks=filterMkts(Object.keys(w.markets));
+  ks.forEach(k=>{
+    (w.markets[k]?.flags||[]).forEach(f=>all.push({...f,mkt:k}));
   });
-  // Sort: crit first, then warn, then info
   const order={crit:0,warn:1,info:2,ok:3};
   all.sort((a,b)=>(order[a.type]||9)-(order[b.type]||9));
   return all;
@@ -4469,7 +4564,7 @@ function delta(val,prev,higherIsBad){
 // RENDERERS
 // ═══════════════════════════════════════════════════════════════
 function renderHeader(){
-  const w=WEEKS[wIdx];
+  const w=getActiveWeek();
   document.getElementById('hWeek').textContent=w.fullLabel;
   const d=getMktData(w,mktKey);
   document.getElementById('hMkt').textContent=MKT_META[mktKey]?.name||mktKey;
@@ -4509,7 +4604,7 @@ function renderWeekSelector(){
 }
 
 function renderTrendBar(){
-  const w=WEEKS[wIdx],a=getMktData(w,mktKey).acct;
+  const w=getActiveWeek(),a=getMktData(w,mktKey).acct;
   // Get compare week
   const cmpSel=document.getElementById('weekCompare');
   let pw=null;
@@ -4530,7 +4625,7 @@ function renderTrendBar(){
 }
 
 function renderKPIs(){
-  const a=getMktData(WEEKS[wIdx],mktKey).acct;
+  const a=getMktData(getActiveWeek(),mktKey).acct;
   const cur=mktKey==='GLOBAL'?'$':getCur(mktKey);
   const ts=a.tacos>15?'crit':a.tacos>10?'warn':'ok';
   const as=a.acos>30?'crit':'ok';
@@ -4547,8 +4642,8 @@ function renderKPIs(){
 }
 
 function renderGlobalView(){
-  const w=WEEKS[wIdx];
-  const mks=Object.keys(w.markets);
+  const w=getActiveWeek();
+  const mks=filterMkts(Object.keys(w.markets));
   const totalRev=mks.reduce((s,k)=>s+(w.markets[k]?.acct.revenue||0),0);
 
   let html='<div class="sec">Marketplace Breakdown</div><div class="mkt-cards">';
@@ -4607,7 +4702,7 @@ function renderGlobalView(){
 }
 
 function renderMktView(){
-  const w=WEEKS[wIdx], d=getMktData(w,mktKey);
+  const w=getActiveWeek(), d=getMktData(w,mktKey);
   const cur=getCur(mktKey);
   const prods=d.products||[];
 
@@ -4670,8 +4765,8 @@ function destroyAll(){Object.values(CH).forEach(c=>{try{c.destroy();}catch(e){}}
 function mkChart(id,cfg){const el=document.getElementById(id);if(el)CH[id]=new Chart(el,cfg);}
 
 function buildGlobalCharts(){
-  const w=WEEKS[wIdx];
-  const mks=Object.keys(w.markets);
+  const w=getActiveWeek();
+  const mks=filterMkts(Object.keys(w.markets));
   const labels=mks.map(k=>MKT_META[k]?.label||k);
   const revs=mks.map(k=>w.markets[k]?.acct.revenue||0);
   const orgs=mks.map(k=>w.markets[k]?.acct.organicSales||0);
@@ -4699,7 +4794,7 @@ function buildGlobalCharts(){
 }
 
 function buildMktCharts(){
-  const d=getMktData(WEEKS[wIdx],mktKey);
+  const d=getMktData(getActiveWeek(),mktKey);
   const prods=d.products||[];
   if(!prods.length)return;
   const pn=prods.map(p=>p.name.length>14?p.name.substring(0,12)+'..':p.name);
@@ -4726,6 +4821,7 @@ function render(){
   renderMktTabs();
   renderWeekSelector();
   renderTrendBar();
+  renderFilterBar();
   renderKPIs();
   destroyAll();
 
@@ -4744,7 +4840,8 @@ function render(){
     });
   }
 
-  document.getElementById('footWeek').textContent=WEEKS[wIdx].fullLabel;
+  const aw=getActiveWeek();
+  document.getElementById('footWeek').textContent=aw.fullLabel;
   document.getElementById('footMkt').textContent=MKT_META[mktKey]?.name||mktKey;
 }
 
@@ -4752,6 +4849,25 @@ function switchMkt(mk){mktKey=mk;render();}
 function switchWeek(i){wIdx=parseInt(i);render();}
 function weekPrev(){if(wIdx<WEEKS.length-1){wIdx++;render();}}
 function weekNext(){if(wIdx>0){wIdx--;render();}}
+function toggleBrand(){brandFilter=brandFilter==='ALL'?'CC':'ALL';render();}
+function toggleView(){viewMode=viewMode==='WEEKLY'?'MTD':'WEEKLY';render();}
+
+function renderFilterBar(){
+  const fb=document.getElementById('filterBar');
+  if(!fb) return;
+  fb.innerHTML=`
+    <div class="filter-group">
+      <span class="filter-label">VIEW</span>
+      <button class="filter-btn ${viewMode==='WEEKLY'?'active':''}" onclick="toggleView()">WEEKLY</button>
+      <button class="filter-btn ${viewMode==='MTD'?'active':''}" onclick="toggleView()">MTD</button>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">BRANDS</span>
+      <button class="filter-btn ${brandFilter==='ALL'?'active':''}" onclick="toggleBrand()">ALL BRANDS</button>
+      <button class="filter-btn ${brandFilter==='CC'?'active':''}" onclick="toggleBrand()">CERAMICS ONLY</button>
+    </div>
+  `;
+}
 
 window.addEventListener('load',()=>render());
 </script>
@@ -4787,6 +4903,8 @@ window.addEventListener('load',()=>render());
 </div>
 
 <div class="trend-bar" id="trendBar"></div>
+
+<div class="filter-bar" id="filterBar"></div>
 
 <div class="page">
   <div class="sec">Account Overview</div>
