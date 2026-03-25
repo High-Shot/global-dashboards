@@ -4737,11 +4737,11 @@ function renderMktView(){
         <div class="pc-row"><span class="pcl">Organic</span><span class="pcv ${p.organic<0?'crit':''}">${fCF(Math.round(p.organic||0),cur)}</span></div>
         <div class="pc-row"><span class="pcl">NTB Orders</span><span class="pcv">${fN(p.ntbOrders||0)}</span></div>
         <div class="pc-row"><span class="pcl">NTB %</span><span class="pcv">${p.units?fP((p.ntbOrders||0)/p.units*100):'0.0%'}</span></div>
+        <div class="pc-row"><span class="pcl">BSR</span><span class="pcv" style="color:var(--electric)">${p.bsr||'—'}</span></div>
         <div class="eff-wrap">
           <div class="eff-lbl"><span class="pcl">TACoS</span><span class="pcv ${vs}">${fP(effVal)} <span style="color:var(--dim);font-size:8px">/ ${effTarget}%</span></span></div>
           <div class="eff-track"><div class="eff-fill" data-w="${ep}" style="background:${ec}"></div><div class="eff-thresh" style="left:${tp}%"></div></div>
         </div>
-        ${p.bsr&&p.bsr!=='—'?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between"><span style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px">BSR</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--electric)">${p.bsr}</span></div>`:''}
       </div>`;
     });
     html+='</div>';
