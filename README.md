@@ -1,2 +1,3 @@
-# NIC
-NIC Industries Weekly Performance Dashboard
+# Global Dashboards
+
+Weekly performance dashboard for tracking brand metrics and KPIs.
